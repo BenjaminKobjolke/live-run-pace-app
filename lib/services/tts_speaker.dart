@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:audio_session/audio_session.dart' as audio_session;
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:audioplayers/audioplayers.dart';
@@ -55,7 +56,7 @@ class TtsSpeaker {
     }
 
     // Initialize audio player for MP3 if needed
-    if (_settings.mp3FilePath != null) {
+    if (_settings.mp3FilePaths.isNotEmpty) {
       _audioPlayer = AudioPlayer();
     }
   }
@@ -64,7 +65,7 @@ class TtsSpeaker {
     print('=== Starting speak sequence ===');
     print('TTS enabled: ${_settings.enabled}');
     print('Pause other audio: ${_settings.pauseOtherAudio}');
-    print('MP3 file: ${_settings.mp3FilePath != null ? "Yes" : "No"}');
+    print('MP3 files: ${_settings.mp3FilePaths.length} available');
 
     if (_session == null) await init();
 
@@ -94,10 +95,14 @@ class TtsSpeaker {
         await Future.delayed(const Duration(milliseconds: 100));
       }
 
-      // Execute MP3 playback if available
-      if (_settings.mp3FilePath != null) {
-        print('Starting MP3 playback...');
-        await _playMp3WithFocus();
+      // Execute MP3 playback if available (keeping our audio focus)
+      if (_settings.mp3FilePaths.isNotEmpty) {
+        // Randomly select an MP3 file
+        final random = Random();
+        final selectedFile = _settings.mp3FilePaths[random.nextInt(_settings.mp3FilePaths.length)];
+        final fileName = selectedFile.split('/').last;
+        print('Starting MP3 playback (with our audio focus) - selected: $fileName');
+        await _playMp3WithFocus(selectedFile);
         print('MP3 playback completed');
       }
 
@@ -114,14 +119,14 @@ class TtsSpeaker {
     }
   }
 
-  Future<void> _playMp3WithFocus() async {
-    if (_audioPlayer == null || _settings.mp3FilePath == null) return;
+  Future<void> _playMp3WithFocus(String filePath) async {
+    if (_audioPlayer == null || filePath.isEmpty) return;
 
     try {
-      print('Playing MP3 file: ${_settings.mp3FilePath}');
+      print('Playing MP3 file: $filePath');
 
       // Start MP3 playback
-      await _audioPlayer!.play(DeviceFileSource(_settings.mp3FilePath!));
+      await _audioPlayer!.play(DeviceFileSource(filePath));
 
       // Wait for MP3 completion with proper timeout handling
       final completer = Completer<void>();
@@ -135,6 +140,7 @@ class TtsSpeaker {
 
       // Also listen for any errors
       final errorSubscription = _audioPlayer!.onPlayerStateChanged.listen((state) {
+        print('MP3 player state changed: $state');
         if (state == PlayerState.stopped && !completer.isCompleted) {
           print('MP3 playback stopped unexpectedly');
           subscription.cancel();
@@ -155,6 +161,15 @@ class TtsSpeaker {
       } finally {
         errorSubscription.cancel();
       }
+
+      // Stop the audio player but don't release it to avoid audio system disruption
+      print('Stopping MP3 player...');
+      await _audioPlayer!.stop();
+
+      // Small delay to ensure stop is complete
+      await Future.delayed(const Duration(milliseconds: 200));
+      print('MP3 player stopped');
+
     } catch (e) {
       print('MP3 playback error: $e');
       rethrow;
@@ -163,8 +178,8 @@ class TtsSpeaker {
 
   // Legacy method for backward compatibility (when TTS is disabled)
   Future<void> _playMp3() async {
-    if (_settings.mp3FilePath != null) {
-      // If MP3 is available, manage focus for MP3 only
+    if (_settings.mp3FilePaths.isNotEmpty) {
+      // If MP3 files are available, manage focus for MP3 only
       bool shouldAcquireFocus = _settings.pauseOtherAudio && !_active;
 
       try {
@@ -174,7 +189,12 @@ class TtsSpeaker {
           await Future.delayed(const Duration(milliseconds: 300));
         }
 
-        await _playMp3WithFocus();
+        // Randomly select an MP3 file
+        final random = Random();
+        final selectedFile = _settings.mp3FilePaths[random.nextInt(_settings.mp3FilePaths.length)];
+        final fileName = selectedFile.split('/').last;
+        print('MP3-only playback - selected: $fileName');
+        await _playMp3WithFocus(selectedFile);
       } finally {
         if (shouldAcquireFocus && _active) {
           await _release();
@@ -201,8 +221,11 @@ class TtsSpeaker {
         // Add a small delay to ensure the focus release is processed
         await Future.delayed(const Duration(milliseconds: 100));
 
-        // Resume AIMP if configured
+        // Resume AIMP if configured (for both TTS-only and TTS+MP3 cases)
         if (_settings.resumeAimpAfterPlayback) {
+          // Add extra delay before resuming AIMP to ensure it's ready
+          print('Waiting before resuming AIMP...');
+          await Future.delayed(const Duration(seconds: 1));
           await _resumeAimpPlayback();
         }
       } catch (e) {
@@ -216,6 +239,7 @@ class TtsSpeaker {
   Future<void> _resumeAimpPlayback() async {
     try {
       print('Attempting to resume AIMP playback...');
+      // Send play command only once to avoid toggling
       await _channel.invokeMethod('resumeAimp');
       print('AIMP resume command sent successfully');
     } catch (e) {

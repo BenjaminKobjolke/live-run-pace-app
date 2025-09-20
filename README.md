@@ -127,6 +127,75 @@ lib/
 ### Git Workflow
 Platform directories (`android/`, `web/`) are excluded from git and regenerated via `install.bat` following Flutter best practices.
 
+### Debugging
+
+#### ADB Commands for Android Debugging
+
+**Clear logs before testing:**
+```bash
+adb logcat -c
+```
+
+**View Flutter logs only:**
+```bash
+# Windows
+adb logcat | findstr flutter
+
+# Linux/Mac
+adb logcat | grep flutter
+
+# Verbose Flutter logs only
+adb logcat *:S flutter:V
+```
+
+**View app-specific logs:**
+```bash
+# All logs from the app
+adb logcat | findstr "com.kobjolke.live_run_pace"
+```
+
+**Monitor audio and TTS events:**
+```bash
+# Filter for audio focus, TTS, MP3, and AIMP events
+adb logcat | findstr "Audio\|TTS\|MP3\|AIMP\|flutter"
+
+# Monitor AIMP screen tap functionality specifically
+adb logcat | findstr "Screen\|toggleAimp\|AIMP"
+```
+
+**Save logs to file for analysis:**
+```bash
+# Capture all logs
+adb logcat > debug_log.txt
+
+# Capture Flutter logs only
+adb logcat | findstr flutter > flutter_log.txt
+```
+
+**Complete debugging workflow:**
+```bash
+# 1. Clear old logs
+adb logcat -c
+
+# 2. Run the app and reproduce the issue
+
+# 3. View live logs
+adb logcat | findstr flutter
+
+# 4. Or save to file for detailed analysis
+adb logcat > debug_log.txt
+```
+
+**Common log patterns to watch for:**
+- `Audio focus acquired/released` - Audio session management
+- `TTS playback completed` - Text-to-speech events
+- `MP3 playback` - Audio file playback
+- `AIMP resume command` - AIMP integration
+- `Audio interruption event` - Audio focus conflicts
+- `Screen tap detected, calling toggleAimp` - Screen tap functionality
+- `toggleAimp method called via method channel` - AIMP toggle debug
+- `Sending AIMP playOrPause intent` - AIMP intent sending
+
 ## Contributing
 
 1. Run `install.bat` to setup development environment

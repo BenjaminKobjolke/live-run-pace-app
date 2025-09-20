@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:vibration/vibration.dart';
 import '../models/app_settings.dart';
 import '../models/running_session.dart';
@@ -32,6 +33,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   bool _showFlash = false;
   TtsSpeaker? _ttsSpeaker;
   bool _isAppInBackground = false;
+  static const MethodChannel _aimpChannel = MethodChannel('com.yourapp.live_run_pace/aimp');
 
   @override
   void initState() {
@@ -326,6 +328,17 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     );
   }
 
+  Future<void> _triggerAimpPlay() async {
+    try {
+      print('Screen tap detected, calling toggleAimp');
+      print('Triggering AIMP toggle from screen tap');
+      await _aimpChannel.invokeMethod('toggleAimp');
+      print('AIMP toggle command sent');
+    } catch (e) {
+      print('Error triggering AIMP toggle: $e');
+    }
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -388,16 +401,24 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                     ],
                   ),
 
-                  const SizedBox(height: 8),
+                  // Wrap the main content area in a GestureDetector for AIMP control and double tap
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: widget.ttsSettings.touchToToggleAimp ? _triggerAimpPlay : null,
+                      onDoubleTap: widget.ttsSettings.doubleTapToCompleteKm ? _goToNextKm : null,
+                      behavior: HitTestBehavior.opaque,
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 8),
 
-                  Text(
-                    '${_session.currentKm} km',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                          Text(
+                            '${_session.currentKm} km',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
 
                   const SizedBox(height: 16),
 
@@ -478,17 +499,22 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                   ),
                   const SizedBox(height: 4),
 
-                  Text(
-                    _session.finishTimeDisplay,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
+                          Text(
+                            _session.finishTimeDisplay,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+
+                          const Spacer(),
+                        ],
+                      ),
                     ),
                   ),
 
-                  const Spacer(),
-
+                  // Buttons are outside the GestureDetector so they work normally
                   Row(
                     children: [
                       Expanded(

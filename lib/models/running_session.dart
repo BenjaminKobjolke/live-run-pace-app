@@ -95,26 +95,31 @@ class RunningSession {
     return Duration(seconds: (targetPace.inSeconds * currentKm).round());
   }
 
+  // Helper method to format duration consistently
+  String _formatDuration(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes % 60;
+    final seconds = duration.inSeconds % 60;
+
+    if (hours > 0) {
+      return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    } else {
+      return '$minutes:${seconds.toString().padLeft(2, '0')}';
+    }
+  }
+
   String get nextTargetTimeDisplay {
-    final next = nextTargetTime;
-    final minutes = next.inMinutes;
-    final seconds = next.inSeconds % 60;
-    return '$minutes:${seconds.toString().padLeft(2, '0')}';
+    return _formatDuration(nextTargetTime);
   }
 
   String get currentTimeDisplay {
-    final current = elapsedTime;
-    final minutes = current.inMinutes;
-    final seconds = current.inSeconds % 60;
-    return '$minutes:${seconds.toString().padLeft(2, '0')}';
+    return _formatDuration(elapsedTime);
   }
 
   String get timeLeftDisplay {
     final left = timeLeftForCurrentKm;
     final absLeft = left.abs();
-    final minutes = absLeft.inMinutes;
-    final seconds = absLeft.inSeconds % 60;
-    final timeString = '$minutes:${seconds.toString().padLeft(2, '0')}';
+    final timeString = _formatDuration(absLeft);
     return left.isNegative ? '-$timeString' : timeString;
   }
 
@@ -137,18 +142,12 @@ class RunningSession {
     );
 
     final estimatedTotal = elapsed + estimatedRemainingTime;
-    final hours = estimatedTotal.inHours;
-    final minutes = estimatedTotal.inMinutes % 60;
-    final seconds = estimatedTotal.inSeconds % 60;
-    return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    return _formatDuration(estimatedTotal);
   }
 
   String get originalEstimatedFinishTime {
     final total = Duration(seconds: (distance * targetPace.inSeconds).round());
-    final hours = total.inHours;
-    final minutes = total.inMinutes % 60;
-    final seconds = total.inSeconds % 60;
-    return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    return _formatDuration(total);
   }
 
   bool get isLastKilometer => currentKm >= totalKilometers;

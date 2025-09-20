@@ -135,14 +135,52 @@ class _StartScreenState extends State<StartScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Settings button at top
+              // Distance and Settings in top row
               Row(
-                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
+                  // Distance section (takes most space)
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Distance',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w300,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        GestureDetector(
+                          onTap: _showDistanceDialog,
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.white, width: 2),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              '${_settings.distance.toStringAsFixed(3)} km',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Settings button
                   GestureDetector(
                     onTap: _showTtsSettingsDialog,
                     child: Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.white, width: 1),
                         borderRadius: BorderRadius.circular(4),
@@ -150,47 +188,14 @@ class _StartScreenState extends State<StartScreen> {
                       child: const Icon(
                         Icons.settings,
                         color: Colors.white,
-                        size: 20,
+                        size: 24,
                       ),
                     ),
                   ),
                 ],
               ),
 
-              const Spacer(),
-
-              const Text(
-                'Distance',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w300,
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              GestureDetector(
-                onTap: _showDistanceDialog,
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.white, width: 2),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    '${_settings.distance.toStringAsFixed(3)} km',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 40),
+              const SizedBox(height: 32),
 
               const Text(
                 'Paces',
