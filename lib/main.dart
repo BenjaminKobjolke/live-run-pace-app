@@ -51,6 +51,7 @@ class _AppLoaderState extends State<AppLoader> {
 
     final activeSession = await StorageService.instance.loadActiveSession();
     final settings = await StorageService.instance.loadSettings();
+    final ttsSettings = await StorageService.instance.loadTtsSettings();
 
     if (mounted) {
       if (activeSession != null && !activeSession.isCompleted) {
@@ -58,6 +59,7 @@ class _AppLoaderState extends State<AppLoader> {
           MaterialPageRoute(
             builder: (context) => MainScreen(
               settings: settings,
+              ttsSettings: ttsSettings,
               existingSession: activeSession,
             ),
           ),

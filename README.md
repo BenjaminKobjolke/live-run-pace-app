@@ -1,16 +1,139 @@
-# live_run_pace_app
+# Live Run Pace App
 
-A new Flutter project.
+A Flutter app designed for runners to track their pace and kilometer targets during runs. Optimized for small screen Android devices (240x432 resolution).
 
-## Getting Started
+## Features
 
-This project is a starting point for a Flutter application.
+### 🏃 Core Running Features
+- **Pace Tracking**: Set your target pace per kilometer
+- **Distance Goals**: Support for any distance (marathon, half-marathon, custom)
+- **Real-time Progress**: Live countdown to next kilometer target
+- **Visual Feedback**: Color-coded time display (green = on pace, red = behind)
 
-A few resources to get you started if this is your first Flutter project:
+### 📱 User Experience
+- **Persistent Storage**: Settings and active sessions saved automatically
+- **Session Recovery**: Resume interrupted runs if app closes
+- **Multi-modal Feedback**: Visual flash + vibration + voice announcements
+- **Small Screen Optimized**: Perfect for compact Android devices
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+### 🔊 Smart Announcements
+When you reach each kilometer, the app announces:
+- "The next target is kilometer 5. You have 5 minutes and 20 seconds left to reach the next target."
+- "You are 1 minute behind schedule" (when running late)
+- "Final kilometer! You have 6 minutes left to finish."
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+### ⚙️ Technical Features
+- **Auto-save**: Progress saved every 10 seconds
+- **Battery Optimized**: UI updates every 10 seconds (not every second)
+- **Offline**: No internet required during runs
+- **Cross-platform**: Android and Web support
+
+## Quick Start
+
+### 1. Setup
+```bash
+# Clone and setup the project
+git clone <repository-url>
+cd live_run_pace_app
+install.bat  # Windows users
+```
+
+### 2. Run the App
+```bash
+# Android device/emulator
+flutter run
+
+# Web browser
+flutter run -d chrome
+```
+
+### 3. Build APK
+```bash
+# Use provided script
+build_apk.bat
+
+# Or manually
+flutter build apk --debug
+```
+
+## Usage
+
+### Initial Setup
+1. **Set Distance**: Tap distance field (default: 42.195 km marathon)
+2. **Set Pace**: Tap pace field (default: 6:00 min/km)
+3. **Start Run**: Press the START button
+
+### During Your Run
+1. **Monitor Progress**: Watch the color-coded time remaining
+   - 🟢 Green: On pace or ahead
+   - 🔴 Red: Behind schedule
+2. **Mark Kilometers**: Press "GOT IT!" when you reach each km
+3. **Listen**: Voice announcements provide progress updates
+4. **Navigate**: Use back arrow to undo accidental taps
+
+### Session Management
+- **Abort**: Tap X button (with confirmation)
+- **Auto-recovery**: App resumes if accidentally closed
+- **Completion**: View detailed breakdown of each kilometer
+
+## Screenshots
+
+See `screenshots/` folder for UI examples:
+- Start screen with distance/pace settings
+- Main running interface
+- Settings dialogs
+
+## Technical Requirements
+
+### Platforms
+- **Android**: Minimum SDK 21 (Android 5.0+)
+- **Web**: Modern browsers with JavaScript enabled
+
+### Device Requirements
+- **Screen**: Optimized for 240x432 but works on any size
+- **Permissions**: Vibration (for haptic feedback)
+- **Audio**: Text-to-speech for voice announcements
+
+### Dependencies
+- `flutter`: SDK framework
+- `shared_preferences`: Settings persistence
+- `vibration`: Haptic feedback
+- `flutter_tts`: Voice announcements
+
+## Development
+
+### Project Structure
+```
+lib/
+├── main.dart              # App entry point
+├── models/                # Data models
+│   ├── app_settings.dart  # Distance/pace settings
+│   └── running_session.dart # Session tracking
+├── screens/               # UI screens
+│   ├── start_screen.dart  # Initial setup
+│   ├── main_screen.dart   # Running interface
+│   └── completion_screen.dart # Results
+├── services/              # Business logic
+│   └── storage_service.dart # Data persistence
+└── widgets/               # Reusable components
+    ├── distance_dialog.dart
+    └── pace_dialog.dart
+```
+
+### Build Scripts
+- `install.bat` - Setup platforms and dependencies
+- `build_apk.bat` - Build debug APK
+
+### Git Workflow
+Platform directories (`android/`, `web/`) are excluded from git and regenerated via `install.bat` following Flutter best practices.
+
+## Contributing
+
+1. Run `install.bat` to setup development environment
+2. Follow existing code style and patterns
+3. Test on small screen devices when possible
+4. Update documentation for significant changes
+
+## License
+
+See LICENSE file for details.

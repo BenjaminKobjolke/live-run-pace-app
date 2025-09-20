@@ -159,8 +159,8 @@ desktop.ini
 google-services.json
 GoogleService-Info.plist
 
-# Test and coverage files
-test/coverage/
+# Test and coverage files (tests removed)
+test/
 coverage/
 *.lcov
 .nyc_output/

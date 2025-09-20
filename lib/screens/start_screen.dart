@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../models/app_settings.dart';
+import '../models/tts_settings.dart';
 import '../services/storage_service.dart';
 import '../widgets/distance_dialog.dart';
 import '../widgets/pace_dialog.dart';
+import '../widgets/tts_settings_dialog.dart';
 import 'main_screen.dart';
 
 class StartScreen extends StatefulWidget {
@@ -14,6 +16,7 @@ class StartScreen extends StatefulWidget {
 
 class _StartScreenState extends State<StartScreen> {
   AppSettings _settings = const AppSettings();
+  TtsSettings _ttsSettings = const TtsSettings();
   bool _isLoading = true;
 
   @override
@@ -24,14 +27,34 @@ class _StartScreenState extends State<StartScreen> {
 
   Future<void> _loadSettings() async {
     final settings = await StorageService.instance.loadSettings();
+    final ttsSettings = await StorageService.instance.loadTtsSettings();
     setState(() {
       _settings = settings;
+      _ttsSettings = ttsSettings;
       _isLoading = false;
     });
   }
 
   Future<void> _saveSettings() async {
     await StorageService.instance.saveSettings(_settings);
+  }
+
+  Future<void> _saveTtsSettings() async {
+    await StorageService.instance.saveTtsSettings(_ttsSettings);
+  }
+
+  Future<void> _showTtsSettingsDialog() async {
+    final newSettings = await showDialog<TtsSettings>(
+      context: context,
+      builder: (context) => TtsSettingsDialog(currentSettings: _ttsSettings),
+    );
+
+    if (newSettings != null) {
+      setState(() {
+        _ttsSettings = newSettings;
+      });
+      await _saveTtsSettings();
+    }
   }
 
   Future<void> _showDistanceDialog() async {
@@ -48,7 +71,7 @@ class _StartScreenState extends State<StartScreen> {
     }
   }
 
-  Future<void> _showPaceDialog() async {
+  Future<void> _showTargetPaceDialog() async {
     final newPace = await showDialog<Duration>(
       context: context,
       builder: (context) => PaceDialog(currentPace: _settings.targetPace),
@@ -65,10 +88,30 @@ class _StartScreenState extends State<StartScreen> {
     }
   }
 
+  Future<void> _showMaxPaceDialog() async {
+    final newPace = await showDialog<Duration>(
+      context: context,
+      builder: (context) => PaceDialog(currentPace: _settings.maxPace),
+    );
+
+    if (newPace != null) {
+      setState(() {
+        _settings = _settings.copyWith(
+          maxPaceMinutes: newPace.inMinutes,
+          maxPaceSeconds: newPace.inSeconds % 60,
+        );
+      });
+      await _saveSettings();
+    }
+  }
+
   void _startSession() {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
-        builder: (context) => MainScreen(settings: _settings),
+        builder: (context) => MainScreen(
+          settings: _settings,
+          ttsSettings: _ttsSettings,
+        ),
       ),
     );
   }
@@ -92,6 +135,28 @@ class _StartScreenState extends State<StartScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              // Settings button at top
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  GestureDetector(
+                    onTap: _showTtsSettingsDialog,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.white, width: 1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Icon(
+                        Icons.settings,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
               const Spacer(),
 
               const Text(
@@ -128,7 +193,7 @@ class _StartScreenState extends State<StartScreen> {
               const SizedBox(height: 40),
 
               const Text(
-                'Pace',
+                'Paces',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 20,
@@ -137,25 +202,78 @@ class _StartScreenState extends State<StartScreen> {
               ),
               const SizedBox(height: 8),
 
-              GestureDetector(
-                onTap: _showPaceDialog,
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.white, width: 2),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    _settings.paceDisplay,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      children: [
+                        const Text(
+                          'Target',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        GestureDetector(
+                          onTap: _showTargetPaceDialog,
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.white, width: 2),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              _settings.paceDisplay,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    textAlign: TextAlign.center,
                   ),
-                ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        const Text(
+                          'Max',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        GestureDetector(
+                          onTap: _showMaxPaceDialog,
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.white, width: 2),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              _settings.maxPaceDisplay,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
 
               const SizedBox(height: 40),

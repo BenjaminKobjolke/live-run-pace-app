@@ -2,9 +2,11 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/app_settings.dart';
 import '../models/running_session.dart';
+import '../models/tts_settings.dart';
 
 class StorageService {
   static const String _settingsKey = 'app_settings';
+  static const String _ttsSettingsKey = 'tts_settings';
   static const String _activeSessionKey = 'active_session';
   static const String _sessionHistoryKey = 'session_history';
 
@@ -36,6 +38,26 @@ class StorageService {
     await init();
     final settingsJson = jsonEncode(settings.toJson());
     await _prefs!.setString(_settingsKey, settingsJson);
+  }
+
+  Future<TtsSettings> loadTtsSettings() async {
+    await init();
+    final settingsJson = _prefs!.getString(_ttsSettingsKey);
+    if (settingsJson == null) {
+      return const TtsSettings();
+    }
+    try {
+      final json = jsonDecode(settingsJson) as Map<String, dynamic>;
+      return TtsSettings.fromJson(json);
+    } catch (e) {
+      return const TtsSettings();
+    }
+  }
+
+  Future<void> saveTtsSettings(TtsSettings settings) async {
+    await init();
+    final settingsJson = jsonEncode(settings.toJson());
+    await _prefs!.setString(_ttsSettingsKey, settingsJson);
   }
 
   Future<RunningSession?> loadActiveSession() async {

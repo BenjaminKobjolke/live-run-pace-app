@@ -43,7 +43,7 @@ call flutter build apk
 echo.
 if %ERRORLEVEL% EQU 0 (
     echo ✓ Build successful!
-    echo APK location: build\app\outputs\flutter-apk\app-debug.apk
+    echo APK location: build\app\outputs\flutter-apk\
     echo.
     echo Opening build folder...
 	cd build\app\outputs\flutter-apk\

@@ -1,3 +1,9 @@
+enum PaceStatus {
+  onSchedule,
+  behindSchedule,
+  aheadOfSchedule,
+}
+
 class KilometerTarget {
   final int kmNumber;
   final DateTime? completedAt;
@@ -54,6 +60,7 @@ class RunningSession {
   final String id;
   final double distance;
   final Duration targetPace;
+  final Duration maxPace;
   final DateTime startTime;
   final List<KilometerTarget> targets;
   final int currentKm;
@@ -63,6 +70,7 @@ class RunningSession {
     required this.id,
     required this.distance,
     required this.targetPace,
+    required this.maxPace,
     required this.startTime,
     required this.targets,
     this.currentKm = 1,
@@ -161,10 +169,30 @@ class RunningSession {
     return elapsedTime < expectedTime;
   }
 
+  PaceStatus get paceStatus {
+    if (currentKm <= 1) return PaceStatus.onSchedule;
+
+    final expectedTime = Duration(seconds: (targetPace.inSeconds * (currentKm - 1)).round());
+    final elapsedSeconds = elapsedTime.inSeconds;
+    final expectedSeconds = expectedTime.inSeconds;
+
+    // Calculate percentage difference
+    final difference = (elapsedSeconds - expectedSeconds) / expectedSeconds;
+
+    if (difference > 0.1) {
+      return PaceStatus.behindSchedule; // More than 10% slower
+    } else if (difference < -0.1) {
+      return PaceStatus.aheadOfSchedule; // More than 10% faster
+    } else {
+      return PaceStatus.onSchedule; // Within ±10%
+    }
+  }
+
   Map<String, dynamic> toJson() => {
     'id': id,
     'distance': distance,
     'targetPaceSeconds': targetPace.inSeconds,
+    'maxPaceSeconds': maxPace.inSeconds,
     'startTime': startTime.toIso8601String(),
     'targets': targets.map((t) => t.toJson()).toList(),
     'currentKm': currentKm,
@@ -175,6 +203,7 @@ class RunningSession {
     id: json['id'] as String,
     distance: (json['distance'] as num).toDouble(),
     targetPace: Duration(seconds: json['targetPaceSeconds'] as int),
+    maxPace: Duration(seconds: json['maxPaceSeconds'] as int? ?? 300), // Default 5:00
     startTime: DateTime.parse(json['startTime'] as String),
     targets: (json['targets'] as List)
         .map((t) => KilometerTarget.fromJson(t as Map<String, dynamic>))
@@ -187,6 +216,7 @@ class RunningSession {
     String? id,
     double? distance,
     Duration? targetPace,
+    Duration? maxPace,
     DateTime? startTime,
     List<KilometerTarget>? targets,
     int? currentKm,
@@ -195,6 +225,7 @@ class RunningSession {
     id: id ?? this.id,
     distance: distance ?? this.distance,
     targetPace: targetPace ?? this.targetPace,
+    maxPace: maxPace ?? this.maxPace,
     startTime: startTime ?? this.startTime,
     targets: targets ?? this.targets,
     currentKm: currentKm ?? this.currentKm,
