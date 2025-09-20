@@ -16,11 +16,23 @@ A Flutter app designed for runners to track their pace and kilometer targets dur
 - **Multi-modal Feedback**: Visual flash + vibration + voice announcements
 - **Small Screen Optimized**: Perfect for compact Android devices
 
-### 🔊 Smart Announcements
+### 🔊 Smart Audio Features
+**Text-to-Speech Announcements:**
 When you reach each kilometer, the app announces:
 - "The next target is kilometer 5. You have 5 minutes and 20 seconds left to reach the next target."
 - "You are 1 minute behind schedule" (when running late)
 - "Final kilometer! You have 6 minutes left to finish."
+
+**Custom Audio Alerts:**
+- Add your own MP3/WAV/M4A files for post-announcement sounds
+- Multiple file support with random selection for variety
+- Individual file selection or bulk folder import
+- Automatic audio focus management (pauses/resumes other apps)
+
+**AIMP Music Player Integration:**
+- Touch main screen to play/pause AIMP music player
+- Automatic AIMP resume after TTS announcements
+- Seamless audio switching between running music and pace updates
 
 ### ⚙️ Technical Features
 - **Auto-save**: Progress saved every 10 seconds
@@ -56,19 +68,50 @@ build_apk.bat
 flutter build apk --debug
 ```
 
+### 🎛️ Advanced Settings
+Access detailed configuration via the settings gear icon:
+
+**Text-to-Speech Options:**
+- Enable/disable voice announcements
+- Adjust speech speed (0.1x to 1.0x)
+- Control TTS volume (0.5x to 2.0x)
+- Audio focus management (pause other apps during announcements)
+
+**Custom Audio Files:**
+- **Add Files**: Select individual MP3/WAV/M4A files
+- **Add Folder**: Bulk import all audio files from a directory
+- Random sound selection after each TTS announcement
+- Scrollable file list with individual remove options
+
+**Interaction Controls:**
+- Touch main screen to toggle AIMP play/pause
+- Double-tap main screen to mark kilometer completion
+- Auto-resume AIMP after TTS announcements
+
+**Android Compatibility:**
+- Android 5.0+ support with version-specific optimizations
+- Android 8 compatibility for file picker operations
+- Proper permission handling across Android versions
+
 ## Usage
 
 ### Initial Setup
 1. **Set Distance**: Tap distance field (default: 42.195 km marathon)
-2. **Set Pace**: Tap pace field (default: 6:00 min/km)
-3. **Start Run**: Press the START button
+2. **Set Target Pace**: Tap target pace field (default: 6:00 min/km)
+3. **Set Max Pace**: Tap max pace field (fallback pace when behind schedule)
+4. **Configure Audio**: Tap settings gear icon to access TTS and audio options
+5. **Start Run**: Press the START button
 
 ### During Your Run
 1. **Monitor Progress**: Watch the color-coded time remaining
    - 🟢 Green: On pace or ahead
    - 🔴 Red: Behind schedule
-2. **Mark Kilometers**: Press "GOT IT!" when you reach each km
-3. **Listen**: Voice announcements provide progress updates
+2. **Mark Kilometers**:
+   - Press "GOT IT!" button when you reach each km
+   - OR double-tap main screen (if enabled in settings)
+3. **Audio Control**:
+   - Single tap main screen to play/pause AIMP music (if enabled)
+   - Listen to voice announcements with optional custom sound alerts
 4. **Navigate**: Use back arrow to undo accidental taps
 
 ### Session Management
@@ -91,14 +134,23 @@ See `screenshots/` folder for UI examples:
 
 ### Device Requirements
 - **Screen**: Optimized for 240x432 but works on any size
-- **Permissions**: Vibration (for haptic feedback)
+- **Permissions**:
+  - Vibration (for haptic feedback)
+  - Storage/Audio (for custom MP3 file selection)
 - **Audio**: Text-to-speech for voice announcements
+- **Optional**: AIMP music player for integrated music control
 
 ### Dependencies
 - `flutter`: SDK framework
 - `shared_preferences`: Settings persistence
 - `vibration`: Haptic feedback
 - `flutter_tts`: Voice announcements
+- `file_picker`: File and folder selection
+- `audioplayers`: Custom MP3 playback
+- `permission_handler`: Storage permissions
+- `audio_session`: Audio focus management
+- `device_info_plus`: Android version detection
+- `flutter_launcher_icons`: Custom app icon generation
 
 ## Development
 
@@ -108,16 +160,19 @@ lib/
 ├── main.dart              # App entry point
 ├── models/                # Data models
 │   ├── app_settings.dart  # Distance/pace settings
-│   └── running_session.dart # Session tracking
+│   ├── running_session.dart # Session tracking
+│   └── tts_settings.dart  # Audio/TTS configuration
 ├── screens/               # UI screens
 │   ├── start_screen.dart  # Initial setup
 │   ├── main_screen.dart   # Running interface
 │   └── completion_screen.dart # Results
 ├── services/              # Business logic
-│   └── storage_service.dart # Data persistence
+│   ├── storage_service.dart # Data persistence
+│   └── tts_speaker.dart   # Audio/TTS management
 └── widgets/               # Reusable components
     ├── distance_dialog.dart
-    └── pace_dialog.dart
+    ├── pace_dialog.dart
+    └── tts_settings_dialog.dart # Audio settings UI
 ```
 
 ### Build Scripts
