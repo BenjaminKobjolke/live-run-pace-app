@@ -110,10 +110,90 @@ coverage/
 # Symbols
 app.*.symbols
 
+# IDE and Editor files
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+*.sublime-*
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# APK build outputs
+*.apk
+*.aab
+*.ipa
+
+# Batch files and scripts (keep build_apk.bat)
+!build_apk.bat
+
+# Temporary and cache files
+*.tmp
+*.temp
+*.cache
+.gradle-cache/
+.android/
+.flutter-devtools/
+
+# Environment and secret files
+.env
+.env.local
+.env.*.local
+*.pem
+*.p12
+google-services.json
+GoogleService-Info.plist
+
+# Test and coverage files
+test/coverage/
+coverage/
+*.lcov
+.nyc_output/
+
+# Documentation build files
+doc/api/
+docs/_build/
+
+# Firebase and other service files
+**/google-services.json
+**/GoogleService-Info.plist
+firebase_options.dart
+
+# Fastlane
+**/fastlane/report.xml
+**/fastlane/Preview.html
+**/fastlane/screenshots
+**/fastlane/test_output
+
+# Platform directories (can be regenerated with: flutter create . --platforms android,web)
+android/
+ios/
+macos/
+linux/
+windows/
+web/
+
+# Screenshots and demo files (optional - keep if you want to track them)
+# screenshots/*.jpg
+# screenshots/*.png
+
 # Exceptions to above rules.
-!**/ios/**/default.mode1v3
-!**/ios/**/default.mode2v3
-!**/ios/**/default.pbxuser
-!**/ios/**/default.perspectivev3
 !/packages/flutter_tools/test/data/dart_dependencies_test/**/.packages
 !/dev/ci/**/Gemfile.lock
+screenshots
+.claude
