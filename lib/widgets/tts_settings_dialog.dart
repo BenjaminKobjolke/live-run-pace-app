@@ -21,6 +21,7 @@ class _TtsSettingsDialogState extends State<TtsSettingsDialog> {
   late double _volume;
   late bool _pauseOtherAudio;
   String? _mp3FilePath;
+  late bool _resumeAimpAfterPlayback;
 
   @override
   void initState() {
@@ -30,6 +31,7 @@ class _TtsSettingsDialogState extends State<TtsSettingsDialog> {
     _volume = widget.currentSettings.volume;
     _pauseOtherAudio = widget.currentSettings.pauseOtherAudio;
     _mp3FilePath = widget.currentSettings.mp3FilePath;
+    _resumeAimpAfterPlayback = widget.currentSettings.resumeAimpAfterPlayback;
   }
 
   Future<void> _pickMp3File() async {
@@ -283,6 +285,26 @@ class _TtsSettingsDialogState extends State<TtsSettingsDialog> {
 
             const SizedBox(height: 20),
 
+            // Resume AIMP After Playback
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Resume AIMP after playback',
+                    style: TextStyle(color: Colors.white, fontSize: 16),
+                  ),
+                ),
+                Switch(
+                  value: _resumeAimpAfterPlayback,
+                  onChanged: _pauseOtherAudio ? (value) => setState(() => _resumeAimpAfterPlayback = value) : null,
+                  activeColor: Colors.white,
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 20),
+
             // MP3 File Selection
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -357,6 +379,7 @@ class _TtsSettingsDialogState extends State<TtsSettingsDialog> {
               volume: _volume,
               pauseOtherAudio: _pauseOtherAudio,
               mp3FilePath: _mp3FilePath,
+              resumeAimpAfterPlayback: _resumeAimpAfterPlayback,
             );
             Navigator.of(context).pop(newSettings);
           },

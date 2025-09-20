@@ -4,6 +4,7 @@ class TtsSettings {
   final double volume;
   final bool pauseOtherAudio;
   final String? mp3FilePath;
+  final bool resumeAimpAfterPlayback;
 
   const TtsSettings({
     this.enabled = true,
@@ -11,6 +12,7 @@ class TtsSettings {
     this.volume = 1.5,
     this.pauseOtherAudio = true,
     this.mp3FilePath,
+    this.resumeAimpAfterPlayback = false,
   });
 
   Map<String, dynamic> toJson() => {
@@ -19,6 +21,7 @@ class TtsSettings {
     'volume': volume,
     'pauseOtherAudio': pauseOtherAudio,
     'mp3FilePath': mp3FilePath,
+    'resumeAimpAfterPlayback': resumeAimpAfterPlayback,
   };
 
   factory TtsSettings.fromJson(Map<String, dynamic> json) => TtsSettings(
@@ -27,6 +30,7 @@ class TtsSettings {
     volume: (json['volume'] as num?)?.toDouble() ?? 1.5,
     pauseOtherAudio: json['pauseOtherAudio'] as bool? ?? true,
     mp3FilePath: json['mp3FilePath'] as String?,
+    resumeAimpAfterPlayback: json['resumeAimpAfterPlayback'] as bool? ?? false,
   );
 
   TtsSettings copyWith({
@@ -35,11 +39,13 @@ class TtsSettings {
     double? volume,
     bool? pauseOtherAudio,
     String? mp3FilePath,
+    bool? resumeAimpAfterPlayback,
   }) => TtsSettings(
     enabled: enabled ?? this.enabled,
     speed: speed ?? this.speed,
     volume: volume ?? this.volume,
     pauseOtherAudio: pauseOtherAudio ?? this.pauseOtherAudio,
     mp3FilePath: mp3FilePath ?? this.mp3FilePath,
+    resumeAimpAfterPlayback: resumeAimpAfterPlayback ?? this.resumeAimpAfterPlayback,
   );
 }

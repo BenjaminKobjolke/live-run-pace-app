@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:vibration/vibration.dart';
 import '../models/app_settings.dart';
 import '../models/running_session.dart';
