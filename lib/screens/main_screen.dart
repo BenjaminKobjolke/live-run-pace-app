@@ -2,12 +2,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:vibration/vibration.dart';
-import 'package:flutter_tts/flutter_tts.dart';
-import 'package:audioplayers/audioplayers.dart';
 import '../models/app_settings.dart';
 import '../models/running_session.dart';
 import '../models/tts_settings.dart';
 import '../services/storage_service.dart';
+import '../services/tts_speaker.dart';
 import 'start_screen.dart';
 import 'completion_screen.dart';
 
@@ -32,8 +31,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   Timer? _timer;
   Timer? _saveTimer;
   bool _showFlash = false;
-  FlutterTts? _flutterTts;
-  AudioPlayer? _audioPlayer;
+  TtsSpeaker? _ttsSpeaker;
   bool _isAppInBackground = false;
 
   @override
@@ -41,150 +39,17 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _initializeSession();
-    _initializeTts();
-    _initializeAudioPlayer();
+    _initializeTtsSpeaker();
     _startTimers();
   }
 
-  Future<void> _initializeTts() async {
-    if (!widget.ttsSettings.enabled) {
-      _flutterTts = null;
-      return;
-    }
-
-    _flutterTts = FlutterTts();
+  Future<void> _initializeTtsSpeaker() async {
+    _ttsSpeaker = TtsSpeaker(widget.ttsSettings);
     try {
-      await _flutterTts!.setLanguage("en-US");
-      await _flutterTts!.setSpeechRate(widget.ttsSettings.speed);
-      await _flutterTts!.setVolume(widget.ttsSettings.volume);
-      await _flutterTts!.setPitch(1.0);
-
-      if (widget.ttsSettings.pauseOtherAudio) {
-        // Configure audio session to pause music - Android and iOS
-        await _flutterTts!.setSharedInstance(true);
-
-        // iOS audio configuration
-        try {
-          await _flutterTts!.setIosAudioCategory(IosTextToSpeechAudioCategory.playback,
-              [IosTextToSpeechAudioCategoryOptions.duckOthers]);
-        } catch (e) {
-          // iOS config failed, continue (we're probably on Android)
-        }
-
-        // Enhanced Android audio focus - pause music during TTS
-        await _flutterTts!.awaitSpeakCompletion(true);
-      }
+      await _ttsSpeaker!.init();
     } catch (e) {
-      // TTS initialization failed, continue without it
-      _flutterTts = null;
-    }
-  }
-
-  void _initializeAudioPlayer() {
-    if (widget.ttsSettings.mp3FilePath != null) {
-      _audioPlayer = AudioPlayer();
-
-      // Set initial audio context to not interfere with other apps
-      _audioPlayer!.setAudioContext(AudioContext(
-        android: AudioContextAndroid(
-          audioFocus: AndroidAudioFocus.none,
-        ),
-        iOS: AudioContextIOS(
-          category: AVAudioSessionCategory.ambient,
-          options: {AVAudioSessionOptions.mixWithOthers},
-        ),
-      ));
-    }
-  }
-
-  Future<void> _playMp3Sound() async {
-    if (_audioPlayer != null && widget.ttsSettings.mp3FilePath != null) {
-      try {
-        // Configure audio session based on user settings
-        if (widget.ttsSettings.pauseOtherAudio) {
-          // Request temporary audio focus to pause other apps
-          await _audioPlayer!.setAudioContext(AudioContext(
-            android: AudioContextAndroid(
-              isSpeakerphoneOn: false,
-              stayAwake: false,
-              contentType: AndroidContentType.sonification,
-              usageType: AndroidUsageType.notificationEvent,
-              audioFocus: AndroidAudioFocus.gainTransientMayDuck,
-            ),
-            iOS: AudioContextIOS(
-              category: AVAudioSessionCategory.playback,
-              options: {
-                AVAudioSessionOptions.duckOthers,
-                AVAudioSessionOptions.interruptSpokenAudioAndMixWithOthers,
-              },
-            ),
-          ));
-        } else {
-          // Mix with other audio without interrupting
-          await _audioPlayer!.setAudioContext(AudioContext(
-            android: AudioContextAndroid(
-              isSpeakerphoneOn: false,
-              stayAwake: false,
-              contentType: AndroidContentType.sonification,
-              usageType: AndroidUsageType.notificationEvent,
-              audioFocus: AndroidAudioFocus.none,
-            ),
-            iOS: AudioContextIOS(
-              category: AVAudioSessionCategory.ambient,
-              options: {AVAudioSessionOptions.mixWithOthers},
-            ),
-          ));
-        }
-
-        // Play the MP3 and wait for completion
-        await _audioPlayer!.play(DeviceFileSource(widget.ttsSettings.mp3FilePath!));
-
-        // If we paused other audio, wait for MP3 to finish then release focus
-        if (widget.ttsSettings.pauseOtherAudio) {
-          // Create a completer to wait for playback completion
-          final completer = Completer<void>();
-          late StreamSubscription subscription;
-
-          subscription = _audioPlayer!.onPlayerComplete.listen((_) async {
-            subscription.cancel();
-
-            // Release audio focus to allow other apps to resume
-            try {
-              await _audioPlayer!.setAudioContext(AudioContext(
-                android: AudioContextAndroid(
-                  audioFocus: AndroidAudioFocus.none,
-                ),
-                iOS: AudioContextIOS(
-                  category: AVAudioSessionCategory.ambient,
-                  options: {AVAudioSessionOptions.mixWithOthers},
-                ),
-              ));
-            } catch (e) {
-              // Audio context cleanup failed, continue anyway
-            }
-
-            completer.complete();
-          });
-
-          // Wait for completion or timeout after 30 seconds
-          await completer.future.timeout(
-            const Duration(seconds: 30),
-            onTimeout: () {
-              subscription.cancel();
-              // Cleanup on timeout
-              _audioPlayer!.setAudioContext(AudioContext(
-                android: AudioContextAndroid(audioFocus: AndroidAudioFocus.none),
-                iOS: AudioContextIOS(
-                  category: AVAudioSessionCategory.ambient,
-                  options: {AVAudioSessionOptions.mixWithOthers},
-                ),
-              ));
-            },
-          );
-        }
-      } catch (e) {
-        // MP3 playback failed, continue anyway
-      }
+      print('TTS Speaker initialization failed: $e');
+      _ttsSpeaker = null;
     }
   }
 
@@ -238,14 +103,13 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       case AppLifecycleState.detached:
         _isAppInBackground = true;
         _stopTimers();
-        _saveSession(); // Save before going to background
+        _saveSession();
         break;
       case AppLifecycleState.resumed:
         _isAppInBackground = false;
-        _startTimers(); // Restart timers when returning
+        _startTimers();
         break;
       case AppLifecycleState.inactive:
-        // App is transitioning, don't change timer state
         break;
       case AppLifecycleState.hidden:
         _isAppInBackground = true;
@@ -259,9 +123,6 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _goToNextKm() async {
-    // Trigger visual and haptic feedback
-    await _triggerFeedback();
-
     if (_session.isLastKilometer) {
       _showFinishConfirmation();
       return;
@@ -282,25 +143,23 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       );
     });
 
+    await _triggerFeedback();
     _saveSession();
   }
 
   Future<void> _triggerFeedback() async {
-    // Show white flash
     setState(() {
       _showFlash = true;
     });
 
-    // Vibrate device
     try {
       if (await Vibration.hasVibrator() ?? false) {
         await Vibration.vibrate(duration: 200);
       }
     } catch (e) {
-      // Vibration not available, continue without it
+      // Vibration not available
     }
 
-    // Hide flash after short duration
     Timer(const Duration(milliseconds: 150), () {
       if (mounted) {
         setState(() {
@@ -309,38 +168,27 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       }
     });
 
-    // Start TTS announcement after flash (don't await it)
     _announceProgress();
   }
 
   Future<void> _announceProgress() async {
     if (_isAppInBackground) return;
 
-    // If TTS is disabled but MP3 is available, just play the MP3
-    if (_flutterTts == null) {
-      await _playMp3Sound();
-      return;
-    }
+    if (_ttsSpeaker == null) return;
 
     try {
-      // Stop any current speech before starting new announcement
-      await _flutterTts!.stop();
-
       String announcement;
 
-      // The km we just completed when "GOT IT!" was pressed
       final justCompletedKm = _session.currentKm - 1;
       final nextTargetKm = _session.currentKm;
 
       if (_session.isLastKilometer) {
-        // Final kilometer announcement
         final timeLeft = _session.timeLeftForCurrentKm;
         final absTime = timeLeft.abs();
         final minutes = absTime.inMinutes;
         final seconds = absTime.inSeconds % 60;
         announcement = "Final kilometer! You have $minutes minutes and $seconds seconds left to finish.";
       } else {
-        // Regular progress announcement based on pace status
         final paceStatus = _session.paceStatus;
         final timeLeft = _session.timeLeftForCurrentKm;
         final absTime = timeLeft.abs();
@@ -362,32 +210,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         }
       }
 
-      // Add delay to ensure audio focus is acquired (only if pause other audio is enabled)
-      if (widget.ttsSettings.pauseOtherAudio) {
-        await Future.delayed(const Duration(milliseconds: 250));
-        await _flutterTts!.awaitSpeakCompletion(true);
-      }
-
-      try {
-        // First attempt to speak
-        await _flutterTts!.speak(announcement);
-
-        // Play MP3 sound after TTS completes
-        await _playMp3Sound();
-      } catch (e) {
-        // If first attempt fails, try again after brief delay
-        await Future.delayed(const Duration(milliseconds: 100));
-        try {
-          await _flutterTts!.speak(announcement);
-          // Play MP3 sound after retry TTS completes
-          await _playMp3Sound();
-        } catch (e2) {
-          // Both TTS attempts failed, still try to play MP3
-          await _playMp3Sound();
-        }
-      }
+      await _ttsSpeaker!.speak(announcement);
     } catch (e) {
-      // TTS failed, continue without announcement
+      print('Announcement error: $e');
     }
   }
 
@@ -504,57 +329,20 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
-    // Remove lifecycle observer
     WidgetsBinding.instance.removeObserver(this);
-
-    // Stop and cleanup timers
     _stopTimers();
-
-    // Stop and cleanup TTS
-    _cleanupTts();
-
-    // Cleanup audio player
-    _cleanupAudioPlayer();
-
+    _cleanupTtsSpeaker();
     super.dispose();
   }
 
-  Future<void> _cleanupTts() async {
-    if (_flutterTts != null) {
+  Future<void> _cleanupTtsSpeaker() async {
+    if (_ttsSpeaker != null) {
       try {
-        await _flutterTts!.stop();
-        await _flutterTts!.awaitSpeakCompletion(true);
+        await _ttsSpeaker!.dispose();
       } catch (e) {
-        // TTS cleanup failed, continue anyway
+        print('TTS Speaker cleanup failed: $e');
       } finally {
-        _flutterTts = null;
-      }
-    }
-  }
-
-  Future<void> _cleanupAudioPlayer() async {
-    if (_audioPlayer != null) {
-      try {
-        // Stop any playing audio
-        await _audioPlayer!.stop();
-
-        // Release audio focus before disposing
-        await _audioPlayer!.setAudioContext(AudioContext(
-          android: AudioContextAndroid(
-            audioFocus: AndroidAudioFocus.none,
-          ),
-          iOS: AudioContextIOS(
-            category: AVAudioSessionCategory.ambient,
-            options: {AVAudioSessionOptions.mixWithOthers},
-          ),
-        ));
-
-        // Dispose the player
-        await _audioPlayer!.dispose();
-      } catch (e) {
-        // Audio player cleanup failed, continue anyway
-      } finally {
-        _audioPlayer = null;
+        _ttsSpeaker = null;
       }
     }
   }
@@ -569,199 +357,198 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const SizedBox(width: 20),
-                  const Text(
-                    'Next target distance',
-                    style: TextStyle(
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const SizedBox(width: 20),
+                      const Text(
+                        'Next target distance',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w300,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: _showAbortConfirmation,
+                        child: Container(
+                          width: 20,
+                          height: 20,
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.close,
+                            color: Colors.black,
+                            size: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  Text(
+                    '${_session.currentKm} km',
+                    style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w300,
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  GestureDetector(
-                    onTap: _showAbortConfirmation,
-                    child: Container(
-                      width: 20,
-                      height: 20,
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.close,
-                        color: Colors.black,
-                        size: 14,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
 
-              const SizedBox(height: 8),
+                  const SizedBox(height: 16),
 
-              Text(
-                '${_session.currentKm} km',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  Column(
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      const Text(
-                        'Current',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 12,
+                      Column(
+                        children: [
+                          const Text(
+                            'Current',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _session.currentTimeDisplay,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Column(
+                        children: [
+                          const Text(
+                            'Next target',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _session.nextTargetTimeDisplay,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  const Text(
+                    'Time left',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+
+                  Text(
+                    _session.timeLeftDisplay,
+                    style: TextStyle(
+                      color: _session.isOverTime ? Colors.red : Colors.green,
+                      fontSize: 42,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  const Text(
+                    'Finish time',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+
+                  Text(
+                    _session.finishTimeDisplay,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  const Spacer(),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 1,
+                        child: ElevatedButton(
+                          onPressed: _session.currentKm > 1 ? _goToPreviousKm : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            foregroundColor: Colors.white,
+                            side: const BorderSide(color: Colors.white, width: 2),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          child: const Icon(Icons.arrow_back, size: 20),
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _session.currentTimeDisplay,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 3,
+                        child: ElevatedButton(
+                          onPressed: _goToNextKm,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            foregroundColor: Colors.white,
+                            side: const BorderSide(color: Colors.white, width: 2),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          child: const Text(
+                            'GOT IT!',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1,
+                            ),
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  Column(
-                    children: [
-                      const Text(
-                        'Next target',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 12,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _session.nextTargetTimeDisplay,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
+
+                  const SizedBox(height: 16),
                 ],
               ),
-
-              const SizedBox(height: 20),
-
-              const Text(
-                'Time left',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                ),
-              ),
-              const SizedBox(height: 4),
-
-              Text(
-                _session.timeLeftDisplay,
-                style: TextStyle(
-                  color: _session.isOverTime ? Colors.red : Colors.green,
-                  fontSize: 42,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              const Text(
-                'Finish time',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                ),
-              ),
-              const SizedBox(height: 4),
-
-              Text(
-                _session.finishTimeDisplay,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-
-              const Spacer(),
-
-              Row(
-                children: [
-                  Expanded(
-                    flex: 1,
-                    child: ElevatedButton(
-                      onPressed: _session.currentKm > 1 ? _goToPreviousKm : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        foregroundColor: Colors.white,
-                        side: const BorderSide(color: Colors.white, width: 2),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                      child: const Icon(Icons.arrow_back, size: 20),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    flex: 3,
-                    child: ElevatedButton(
-                      onPressed: _goToNextKm,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        foregroundColor: Colors.white,
-                        side: const BorderSide(color: Colors.white, width: 2),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                      child: const Text(
-                        'GOT IT!',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-
-                const SizedBox(height: 16),
-              ],
             ),
           ),
-        ),
 
-        // White flash overlay
-        if (_showFlash)
-          Container(
-            width: double.infinity,
-            height: double.infinity,
-            color: Colors.white,
-          ),
-      ],
-    ),
-  );
+          if (_showFlash)
+            Container(
+              width: double.infinity,
+              height: double.infinity,
+              color: Colors.white,
+            ),
+        ],
+      ),
+    );
   }
 }
