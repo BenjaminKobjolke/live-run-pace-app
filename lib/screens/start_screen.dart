@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import '../models/app_settings.dart';
 import '../models/tts_settings.dart';
 import '../services/storage_service.dart';
-import '../widgets/distance_dialog.dart';
-import '../widgets/pace_dialog.dart';
 import '../widgets/tap_value_box.dart';
+import 'distance_input_screen.dart';
+import 'pace_input_screen.dart';
 import 'main_screen.dart';
 import 'settings_screen.dart';
 
@@ -60,9 +60,11 @@ class _StartScreenState extends State<StartScreen> {
   }
 
   Future<void> _showDistanceDialog() async {
-    final newDistance = await showDialog<double>(
-      context: context,
-      builder: (context) => DistanceDialog(currentDistance: _settings.distance),
+    final newDistance = await Navigator.of(context).push<double>(
+      MaterialPageRoute(
+        builder: (context) =>
+            DistanceInputScreen(currentDistance: _settings.distance),
+      ),
     );
 
     if (newDistance != null) {
@@ -74,9 +76,13 @@ class _StartScreenState extends State<StartScreen> {
   }
 
   Future<void> _showTargetPaceDialog() async {
-    final newPace = await showDialog<Duration>(
-      context: context,
-      builder: (context) => PaceDialog(currentPace: _settings.targetPace),
+    final newPace = await Navigator.of(context).push<Duration>(
+      MaterialPageRoute(
+        builder: (context) => PaceInputScreen(
+          currentPace: _settings.targetPace,
+          title: 'Target Pace',
+        ),
+      ),
     );
 
     if (newPace != null) {
@@ -91,9 +97,13 @@ class _StartScreenState extends State<StartScreen> {
   }
 
   Future<void> _showMaxPaceDialog() async {
-    final newPace = await showDialog<Duration>(
-      context: context,
-      builder: (context) => PaceDialog(currentPace: _settings.maxPace),
+    final newPace = await Navigator.of(context).push<Duration>(
+      MaterialPageRoute(
+        builder: (context) => PaceInputScreen(
+          currentPace: _settings.maxPace,
+          title: 'Max Pace',
+        ),
+      ),
     );
 
     if (newPace != null) {

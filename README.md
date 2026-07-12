@@ -165,13 +165,14 @@ lib/
 ├── screens/               # UI screens
 │   ├── start_screen.dart  # Initial setup
 │   ├── main_screen.dart   # Running interface
+│   ├── distance_input_screen.dart # Full-screen distance keypad
+│   ├── pace_input_screen.dart     # Full-screen pace keypad
 │   └── completion_screen.dart # Results
 ├── services/              # Business logic
 │   ├── storage_service.dart # Data persistence
 │   └── tts_speaker.dart   # Audio/TTS management
 └── widgets/               # Reusable components
-    ├── distance_dialog.dart
-    ├── pace_dialog.dart
+    ├── digit_keypad.dart  # On-screen numeric keypad
     └── tts_settings_dialog.dart # Audio settings UI
 ```
 
