@@ -60,7 +60,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await _handlePickResult(result, isFolder: true);
   }
 
-  Future<void> _handlePickResult(Mp3PickResult result, {required bool isFolder}) async {
+  Future<void> _handlePickResult(
+    Mp3PickResult result, {
+    required bool isFolder,
+  }) async {
     switch (result.status) {
       case Mp3PickStatus.added:
         if (result.paths.isNotEmpty) {
@@ -70,31 +73,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
       case Mp3PickStatus.cancelled:
         break;
       case Mp3PickStatus.permissionDenied:
-        await showInfoDialog(context,
-            title: 'Permission Required',
-            message: 'Storage permission is required to select MP3 files. Please grant permission and try again.');
+        await showInfoDialog(
+          context,
+          title: 'Permission Required',
+          message:
+              'Storage permission is required to select MP3 files. Please grant permission and try again.',
+        );
         break;
       case Mp3PickStatus.permissionPermanentlyDenied:
-        final openSettings = await showConfirmDialog(context,
-            title: 'Permission Denied',
-            message: 'Storage permission has been permanently denied. Please enable it in app settings to select MP3 files.',
-            confirmLabel: 'Settings');
+        final openSettings = await showConfirmDialog(
+          context,
+          title: 'Permission Denied',
+          message:
+              'Storage permission has been permanently denied. Please enable it in app settings to select MP3 files.',
+          confirmLabel: 'Settings',
+        );
         if (openSettings) openAppSettings();
         break;
       case Mp3PickStatus.emptyFolder:
-        await showInfoDialog(context,
-            title: 'No Audio Files Found',
-            message: 'The selected folder does not contain any audio files (MP3, WAV, M4A).');
+        await showInfoDialog(
+          context,
+          title: 'No Audio Files Found',
+          message:
+              'The selected folder does not contain any audio files (MP3, WAV, M4A).',
+        );
         break;
       case Mp3PickStatus.noNewFiles:
-        await showInfoDialog(context,
-            title: 'No New Files Added',
-            message: 'All ${result.totalFound} audio files from the selected folder are already in your list.');
+        await showInfoDialog(
+          context,
+          title: 'No New Files Added',
+          message:
+              'All ${result.totalFound} audio files from the selected folder are already in your list.',
+        );
         break;
       case Mp3PickStatus.error:
-        await showInfoDialog(context,
-            title: isFolder ? 'Folder Selection Error' : 'File Selection Error',
-            message: _pickerErrorMessage(result, isFolder: isFolder));
+        await showInfoDialog(
+          context,
+          title: isFolder ? 'Folder Selection Error' : 'File Selection Error',
+          message: _pickerErrorMessage(result, isFolder: isFolder),
+        );
         break;
     }
   }
@@ -117,18 +134,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _save() {
-    Navigator.of(context).pop(TtsSettings(
-      enabled: _enabled,
-      speed: _speed,
-      volume: _volume,
-      pauseOtherAudio: _pauseOtherAudio,
-      mp3FilePaths: _mp3FilePaths,
-      resumeAimpAfterPlayback: _resumeAimpAfterPlayback,
-      touchToToggleAimp: _touchToToggleAimp,
-      doubleTapToCompleteKm: _doubleTapToCompleteKm,
-      buttonNavigationDelay: _buttonNavigationDelay,
-      delayAfterAudioMs: _delayAfterAudioMs,
-    ));
+    Navigator.of(context).pop(
+      TtsSettings(
+        enabled: _enabled,
+        speed: _speed,
+        volume: _volume,
+        pauseOtherAudio: _pauseOtherAudio,
+        mp3FilePaths: _mp3FilePaths,
+        resumeAimpAfterPlayback: _resumeAimpAfterPlayback,
+        touchToToggleAimp: _touchToToggleAimp,
+        doubleTapToCompleteKm: _doubleTapToCompleteKm,
+        buttonNavigationDelay: _buttonNavigationDelay,
+        delayAfterAudioMs: _delayAfterAudioMs,
+      ),
+    );
   }
 
   @override
@@ -159,11 +178,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
         body: TabBarView(
-          children: [
-            _buildTtsTab(),
-            _buildGesturesTab(),
-            _buildMp3Tab(),
-          ],
+          children: [_buildTtsTab(), _buildGesturesTab(), _buildMp3Tab()],
         ),
       ),
     );
@@ -205,19 +220,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
             min: 0,
             max: 3000,
             divisions: 30,
-            onChanged: _enabled ? (v) => setState(() => _delayAfterAudioMs = v.round()) : null,
+            onChanged: _enabled
+                ? (v) => setState(() => _delayAfterAudioMs = v.round())
+                : null,
           ),
           const SizedBox(height: 20),
           SettingSwitch(
             label: 'Pause other apps audio',
             value: _pauseOtherAudio,
-            onChanged: _enabled ? (v) => setState(() => _pauseOtherAudio = v) : null,
+            onChanged: _enabled
+                ? (v) => setState(() => _pauseOtherAudio = v)
+                : null,
           ),
           const SizedBox(height: 20),
           SettingSwitch(
             label: 'Resume AIMP after playback',
             value: _resumeAimpAfterPlayback,
-            onChanged: _pauseOtherAudio ? (v) => setState(() => _resumeAimpAfterPlayback = v) : null,
+            onChanged: _pauseOtherAudio
+                ? (v) => setState(() => _resumeAimpAfterPlayback = v)
+                : null,
           ),
         ],
       ),
@@ -265,5 +286,4 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
-
 }

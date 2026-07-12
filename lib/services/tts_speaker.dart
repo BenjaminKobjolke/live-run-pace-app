@@ -13,7 +13,9 @@ class TtsSpeaker {
   audio_session.AudioSession? _session;
   bool _active = false;
   final TtsSettings _settings;
-  static const MethodChannel _channel = MethodChannel('com.yourapp.live_run_pace/aimp');
+  static const MethodChannel _channel = MethodChannel(
+    'com.yourapp.live_run_pace/aimp',
+  );
 
   TtsSpeaker(this._settings);
 
@@ -22,21 +24,28 @@ class TtsSpeaker {
     _session = await audio_session.AudioSession.instance;
 
     // Configure audio session to behave like a phone call for proper interruption/resumption
-    await _session!.configure(audio_session.AudioSessionConfiguration(
-      avAudioSessionCategory: audio_session.AVAudioSessionCategory.playAndRecord,
-      avAudioSessionCategoryOptions: audio_session.AVAudioSessionCategoryOptions.duckOthers |
-          audio_session.AVAudioSessionCategoryOptions.defaultToSpeaker,
-      avAudioSessionMode: audio_session.AVAudioSessionMode.voiceChat,
-      avAudioSessionRouteSharingPolicy: audio_session.AVAudioSessionRouteSharingPolicy.defaultPolicy,
-      avAudioSessionSetActiveOptions: audio_session.AVAudioSessionSetActiveOptions.none,
-      androidAudioAttributes: const audio_session.AndroidAudioAttributes(
-        contentType: audio_session.AndroidAudioContentType.speech,
-        flags: audio_session.AndroidAudioFlags.none,
-        usage: audio_session.AndroidAudioUsage.voiceCommunication,
+    await _session!.configure(
+      audio_session.AudioSessionConfiguration(
+        avAudioSessionCategory:
+            audio_session.AVAudioSessionCategory.playAndRecord,
+        avAudioSessionCategoryOptions:
+            audio_session.AVAudioSessionCategoryOptions.duckOthers |
+            audio_session.AVAudioSessionCategoryOptions.defaultToSpeaker,
+        avAudioSessionMode: audio_session.AVAudioSessionMode.voiceChat,
+        avAudioSessionRouteSharingPolicy:
+            audio_session.AVAudioSessionRouteSharingPolicy.defaultPolicy,
+        avAudioSessionSetActiveOptions:
+            audio_session.AVAudioSessionSetActiveOptions.none,
+        androidAudioAttributes: const audio_session.AndroidAudioAttributes(
+          contentType: audio_session.AndroidAudioContentType.speech,
+          flags: audio_session.AndroidAudioFlags.none,
+          usage: audio_session.AndroidAudioUsage.voiceCommunication,
+        ),
+        androidAudioFocusGainType:
+            audio_session.AndroidAudioFocusGainType.gainTransient,
+        androidWillPauseWhenDucked: false,
       ),
-      androidAudioFocusGainType: audio_session.AndroidAudioFocusGainType.gainTransient,
-      androidWillPauseWhenDucked: false,
-    ));
+    );
 
     // Add basic audio interruption listener for debugging
     _session!.interruptionEventStream.listen((event) {
@@ -108,9 +117,12 @@ class TtsSpeaker {
       if (playMp3 && _settings.mp3FilePaths.isNotEmpty) {
         // Randomly select an MP3 file
         final random = Random();
-        final selectedFile = _settings.mp3FilePaths[random.nextInt(_settings.mp3FilePaths.length)];
+        final selectedFile = _settings
+            .mp3FilePaths[random.nextInt(_settings.mp3FilePaths.length)];
         final fileName = selectedFile.split('/').last;
-        AppLogger.d('Starting MP3 playback (with our audio focus) - selected: $fileName');
+        AppLogger.d(
+          'Starting MP3 playback (with our audio focus) - selected: $fileName',
+        );
         await _playMp3WithFocus(selectedFile);
         AppLogger.d('MP3 playback completed');
       }
@@ -161,12 +173,15 @@ class TtsSpeaker {
       // (ReleaseMode.stop), so it keeps draining during this wait.
       // User-configurable (Settings -> "Delay after audio").
       if (_settings.delayAfterAudioMs > 0) {
-        AppLogger.d('Draining audio tail for ${_settings.delayAfterAudioMs} ms...');
-        await Future.delayed(Duration(milliseconds: _settings.delayAfterAudioMs));
+        AppLogger.d(
+          'Draining audio tail for ${_settings.delayAfterAudioMs} ms...',
+        );
+        await Future.delayed(
+          Duration(milliseconds: _settings.delayAfterAudioMs),
+        );
       }
       await _audioPlayer!.stop(); // free for next playback
       AppLogger.d('MP3 player stopped');
-
     } catch (e) {
       AppLogger.e('MP3 playback error', error: e);
       rethrow;
@@ -186,7 +201,9 @@ class TtsSpeaker {
       AppLogger.d('Releasing audio focus - other apps should resume now');
       _active = false;
       try {
-        await _session!.setActive(false); // Release focus so other audio resumes
+        await _session!.setActive(
+          false,
+        ); // Release focus so other audio resumes
         AppLogger.d('Audio focus released successfully');
         // Add a small delay to ensure the focus release is processed
         await Future.delayed(const Duration(milliseconds: 100));

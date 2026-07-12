@@ -22,7 +22,10 @@ Future<bool> showConfirmDialog(
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
-          child: Text(cancelLabel, style: const TextStyle(color: Colors.white70)),
+          child: Text(
+            cancelLabel,
+            style: const TextStyle(color: Colors.white70),
+          ),
         ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(true),

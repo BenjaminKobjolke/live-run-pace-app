@@ -27,7 +27,10 @@ class RunStatsView extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             _StatColumn(label: 'Current', value: session.currentTimeDisplay),
-            _StatColumn(label: 'Next target', value: session.nextTargetTimeDisplay),
+            _StatColumn(
+              label: 'Next target',
+              value: session.nextTargetTimeDisplay,
+            ),
           ],
         ),
         const SizedBox(height: 20),
@@ -75,11 +78,18 @@ class _StatColumn extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.white70, fontSize: 12),
+        ),
         const SizedBox(height: 2),
         Text(
           value,
-          style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ],
     );

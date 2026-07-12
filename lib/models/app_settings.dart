@@ -13,8 +13,10 @@ class AppSettings {
     this.maxPaceSeconds = 45,
   });
 
-  Duration get targetPace => Duration(minutes: paceMinutes, seconds: paceSeconds);
-  Duration get maxPace => Duration(minutes: maxPaceMinutes, seconds: maxPaceSeconds);
+  Duration get targetPace =>
+      Duration(minutes: paceMinutes, seconds: paceSeconds);
+  Duration get maxPace =>
+      Duration(minutes: maxPaceMinutes, seconds: maxPaceSeconds);
 
   Duration get totalEstimatedTime {
     final pacePerKm = targetPace;
@@ -22,8 +24,10 @@ class AppSettings {
     return Duration(seconds: totalSeconds);
   }
 
-  String get paceDisplay => '$paceMinutes:${paceSeconds.toString().padLeft(2, '0')}';
-  String get maxPaceDisplay => '$maxPaceMinutes:${maxPaceSeconds.toString().padLeft(2, '0')}';
+  String get paceDisplay =>
+      '$paceMinutes:${paceSeconds.toString().padLeft(2, '0')}';
+  String get maxPaceDisplay =>
+      '$maxPaceMinutes:${maxPaceSeconds.toString().padLeft(2, '0')}';
 
   String get finishTimeDisplay {
     final total = totalEstimatedTime;

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/app_settings.dart';
 import '../models/tts_settings.dart';
 import '../services/storage_service.dart';
-import '../widgets/tap_value_box.dart';
+import '../widgets/start_screen_sections.dart';
 import 'distance_input_screen.dart';
 import 'pace_input_screen.dart';
 import 'main_screen.dart';
@@ -99,10 +99,8 @@ class _StartScreenState extends State<StartScreen> {
   Future<void> _showMaxPaceDialog() async {
     final newPace = await Navigator.of(context).push<Duration>(
       MaterialPageRoute(
-        builder: (context) => PaceInputScreen(
-          currentPace: _settings.maxPace,
-          title: 'Max Pace',
-        ),
+        builder: (context) =>
+            PaceInputScreen(currentPace: _settings.maxPace, title: 'Max Pace'),
       ),
     );
 
@@ -120,10 +118,8 @@ class _StartScreenState extends State<StartScreen> {
   void _startSession() {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
-        builder: (context) => MainScreen(
-          settings: _settings,
-          ttsSettings: _ttsSettings,
-        ),
+        builder: (context) =>
+            MainScreen(settings: _settings, ttsSettings: _ttsSettings),
       ),
     );
   }
@@ -133,9 +129,7 @@ class _StartScreenState extends State<StartScreen> {
     if (_isLoading) {
       return const Scaffold(
         backgroundColor: Colors.black,
-        body: Center(
-          child: CircularProgressIndicator(color: Colors.white),
-        ),
+        body: Center(child: CircularProgressIndicator(color: Colors.white)),
       );
     }
 
@@ -147,100 +141,19 @@ class _StartScreenState extends State<StartScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Distance and Settings in top row
-              Row(
-                children: [
-                  // Distance section (takes most space)
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Distance',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w300,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        TapValueBox(
-                          value: '${_settings.distance.toStringAsFixed(3)} km',
-                          onTap: _showDistanceDialog,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  // Settings button
-                  GestureDetector(
-                    onTap: _showTtsSettingsDialog,
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.white, width: 1),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Icon(
-                        Icons.settings,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                    ),
-                  ),
-                ],
+              DistanceSettingsRow(
+                distanceText: '${_settings.distance.toStringAsFixed(3)} km',
+                onDistanceTap: _showDistanceDialog,
+                onSettingsTap: _showTtsSettingsDialog,
               ),
-
               const SizedBox(height: 32),
-
-              const Text(
-                'Paces',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w300,
-                ),
+              PacesSection(
+                targetText: _settings.paceDisplay,
+                maxText: _settings.maxPaceDisplay,
+                onTargetTap: _showTargetPaceDialog,
+                onMaxTap: _showMaxPaceDialog,
               ),
-              const SizedBox(height: 8),
-
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      children: [
-                        const Text(
-                          'Target',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        TapValueBox(value: _settings.paceDisplay, onTap: _showTargetPaceDialog),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        const Text(
-                          'Max',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        TapValueBox(value: _settings.maxPaceDisplay, onTap: _showMaxPaceDialog),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-
               const SizedBox(height: 40),
-
               Text(
                 'Finish time:',
                 style: TextStyle(
@@ -249,7 +162,6 @@ class _StartScreenState extends State<StartScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-
               Text(
                 _settings.finishTimeDisplay,
                 style: const TextStyle(
@@ -258,33 +170,8 @@ class _StartScreenState extends State<StartScreen> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-
               const Spacer(),
-
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _startSession,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    foregroundColor: Colors.white,
-                    side: const BorderSide(color: Colors.white, width: 2),
-                    padding: const EdgeInsets.symmetric(vertical: 20),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                  child: const Text(
-                    'START',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                ),
-              ),
-
+              StartButton(onPressed: _startSession),
               const SizedBox(height: 32),
             ],
           ),

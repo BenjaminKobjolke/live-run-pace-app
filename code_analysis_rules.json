@@ -72,7 +72,7 @@
     "enabled": true,
     "check_dev_dependencies": true,
     "severity": "warning",
-    "ignore_packages": ["flutter", "flutter_localizations", "flutter_test", "flutter_lints", "dart_code_linter", "build_runner", "json_serializable", "freezed", "freezed_annotation"]
+    "ignore_packages": ["flutter", "flutter_localizations", "flutter_test", "flutter_lints", "dart_code_linter", "build_runner", "json_serializable", "freezed", "freezed_annotation", "audio_session", "flutter_launcher_icons"]
   },
   "dart_import_rules": {
     "enabled": true,

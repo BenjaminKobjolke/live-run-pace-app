@@ -22,7 +22,11 @@ class PausedOverlay extends StatelessWidget {
             children: [
               const Text(
                 'Paused',
-                style: TextStyle(color: Colors.white, fontSize: 42, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 42,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 32),
               SizedBox(
@@ -34,7 +38,9 @@ class PausedOverlay extends StatelessWidget {
                     foregroundColor: Colors.white,
                     side: const BorderSide(color: Colors.white, width: 2),
                     padding: const EdgeInsets.symmetric(vertical: 20),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4),
+                    ),
                   ),
                   child: const Text(
                     'CONTINUE',

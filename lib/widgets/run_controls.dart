@@ -28,12 +28,12 @@ class RunControls extends StatelessWidget {
   });
 
   ButtonStyle get _style => ElevatedButton.styleFrom(
-        backgroundColor: Colors.transparent,
-        foregroundColor: enabled ? Colors.white : Colors.white30,
-        side: BorderSide(color: enabled ? Colors.white : Colors.white30, width: 2),
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-      );
+    backgroundColor: Colors.transparent,
+    foregroundColor: enabled ? Colors.white : Colors.white30,
+    side: BorderSide(color: enabled ? Colors.white : Colors.white30, width: 2),
+    padding: const EdgeInsets.symmetric(vertical: 12),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +44,11 @@ class RunControls extends StatelessWidget {
           child: ElevatedButton(
             onPressed: (enabled && canGoPrevious) ? onPrevious : null,
             style: _style,
-            child: Icon(Icons.arrow_back, size: 20, color: enabled ? Colors.white : Colors.white30),
+            child: Icon(
+              Icons.arrow_back,
+              size: 20,
+              color: enabled ? Colors.white : Colors.white30,
+            ),
           ),
         ),
         const SizedBox(width: 12),

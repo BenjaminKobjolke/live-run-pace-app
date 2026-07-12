@@ -80,39 +80,12 @@ class _Mp3FileListState extends State<Mp3FileList> {
               itemCount: widget.filePaths.length,
               itemBuilder: (context, index) {
                 final filePath = widget.filePaths[index];
-                final fileName = filePath.split('/').last;
-                final isPlaying = _playingPath == filePath;
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        onPressed: widget.enabled ? () => _togglePreview(filePath) : null,
-                        icon: Icon(
-                          isPlaying ? Icons.stop : Icons.play_arrow,
-                          color: Colors.white70,
-                          size: 18,
-                        ),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          fileName,
-                          style: const TextStyle(color: Colors.white70, fontSize: 12),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: widget.enabled ? () => widget.onRemove(filePath) : null,
-                        icon: const Icon(Icons.close, color: Colors.white, size: 16),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                    ],
-                  ),
+                return _Mp3FileRow(
+                  fileName: filePath.split('/').last,
+                  isPlaying: _playingPath == filePath,
+                  enabled: widget.enabled,
+                  onToggle: () => _togglePreview(filePath),
+                  onRemove: () => widget.onRemove(filePath),
                 );
               },
             ),
@@ -133,6 +106,59 @@ class _Mp3FileListState extends State<Mp3FileList> {
                 child: const Text('Clear All', style: TextStyle(fontSize: 12)),
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One selected-file row: preview toggle, file name, and remove button.
+class _Mp3FileRow extends StatelessWidget {
+  final String fileName;
+  final bool isPlaying;
+  final bool enabled;
+  final VoidCallback onToggle;
+  final VoidCallback onRemove;
+
+  const _Mp3FileRow({
+    required this.fileName,
+    required this.isPlaying,
+    required this.enabled,
+    required this.onToggle,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: enabled ? onToggle : null,
+            icon: Icon(
+              isPlaying ? Icons.stop : Icons.play_arrow,
+              color: Colors.white70,
+              size: 18,
+            ),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              fileName,
+              style: const TextStyle(color: Colors.white70, fontSize: 12),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          IconButton(
+            onPressed: enabled ? onRemove : null,
+            icon: const Icon(Icons.close, color: Colors.white, size: 16),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
         ],
       ),
     );

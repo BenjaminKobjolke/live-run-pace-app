@@ -37,23 +37,14 @@ class TtsSettings {
   };
 
   factory TtsSettings.fromJson(Map<String, dynamic> json) {
-    // Handle backward compatibility: convert old single mp3FilePath to list
-    List<String> mp3Paths = [];
-    if (json['mp3FilePaths'] != null) {
-      // New format: list of paths
-      mp3Paths = List<String>.from(json['mp3FilePaths'] as List? ?? []);
-    } else if (json['mp3FilePath'] != null) {
-      // Old format: single path, convert to list
-      mp3Paths = [json['mp3FilePath'] as String];
-    }
-
     return TtsSettings(
       enabled: json['enabled'] as bool? ?? true,
       speed: (json['speed'] as num?)?.toDouble() ?? 0.4,
       volume: (json['volume'] as num?)?.toDouble() ?? 1.5,
       pauseOtherAudio: json['pauseOtherAudio'] as bool? ?? true,
-      mp3FilePaths: mp3Paths,
-      resumeAimpAfterPlayback: json['resumeAimpAfterPlayback'] as bool? ?? false,
+      mp3FilePaths: _readMp3FilePaths(json),
+      resumeAimpAfterPlayback:
+          json['resumeAimpAfterPlayback'] as bool? ?? false,
       touchToToggleAimp: json['touchToToggleAimp'] as bool? ?? false,
       doubleTapToCompleteKm: json['doubleTapToCompleteKm'] as bool? ?? false,
       buttonNavigationDelay: json['buttonNavigationDelay'] as bool? ?? true,
@@ -78,10 +69,25 @@ class TtsSettings {
     volume: volume ?? this.volume,
     pauseOtherAudio: pauseOtherAudio ?? this.pauseOtherAudio,
     mp3FilePaths: mp3FilePaths ?? this.mp3FilePaths,
-    resumeAimpAfterPlayback: resumeAimpAfterPlayback ?? this.resumeAimpAfterPlayback,
+    resumeAimpAfterPlayback:
+        resumeAimpAfterPlayback ?? this.resumeAimpAfterPlayback,
     touchToToggleAimp: touchToToggleAimp ?? this.touchToToggleAimp,
     doubleTapToCompleteKm: doubleTapToCompleteKm ?? this.doubleTapToCompleteKm,
     buttonNavigationDelay: buttonNavigationDelay ?? this.buttonNavigationDelay,
     delayAfterAudioMs: delayAfterAudioMs ?? this.delayAfterAudioMs,
   );
+}
+
+List<String> _readMp3FilePaths(Map<String, dynamic> json) {
+  final paths = json['mp3FilePaths'];
+  if (paths is List) {
+    return List<String>.from(paths);
+  }
+
+  final legacyPath = json['mp3FilePath'];
+  if (legacyPath is String) {
+    return [legacyPath];
+  }
+
+  return [];
 }

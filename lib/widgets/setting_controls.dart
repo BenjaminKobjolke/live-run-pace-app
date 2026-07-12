@@ -21,7 +21,10 @@ class SettingSwitch extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Expanded(
-          child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 16)),
+          child: Text(
+            label,
+            style: const TextStyle(color: Colors.white, fontSize: 16),
+          ),
         ),
         Switch(
           value: value,

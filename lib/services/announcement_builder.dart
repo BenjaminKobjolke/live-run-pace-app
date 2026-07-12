@@ -33,7 +33,8 @@ class AnnouncementBuilder {
     final seconds = absTime.inSeconds % 60;
 
     // Check if the NEXT kilometer will be a partial one
-    final isNextPartial = (nextTargetKm == session.totalKilometers) &&
+    final isNextPartial =
+        (nextTargetKm == session.totalKilometers) &&
         (session.distance - (nextTargetKm - 1)) < 1.0;
     String nextTargetDescription;
 
@@ -54,7 +55,8 @@ class AnnouncementBuilder {
         if (isNextPartial) {
           // For partial segments, adjust the catch-up time proportionally
           final nextSegmentDistance = session.distance - (nextTargetKm - 1);
-          final adjustedMaxPaceSeconds = (session.maxPace.inSeconds * nextSegmentDistance).round();
+          final adjustedMaxPaceSeconds =
+              (session.maxPace.inSeconds * nextSegmentDistance).round();
           final adjMinutes = adjustedMaxPaceSeconds ~/ 60;
           final adjSeconds = adjustedMaxPaceSeconds % 60;
           return "Kilometer $justCompletedKm completed. You're behind schedule. Run $nextTargetDescription in $adjMinutes minutes and $adjSeconds seconds to catch up.";

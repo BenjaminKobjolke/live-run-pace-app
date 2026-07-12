@@ -41,19 +41,18 @@ class DistanceEntry {
 class DistanceHistory {
   final List<DistanceEntry> entries;
 
-  const DistanceHistory({
-    this.entries = const [],
-  });
+  const DistanceHistory({this.entries = const []});
 
   Map<String, dynamic> toJson() => {
     'entries': entries.map((e) => e.toJson()).toList(),
   };
 
-  factory DistanceHistory.fromJson(Map<String, dynamic> json) => DistanceHistory(
-    entries: (json['entries'] as List? ?? [])
-        .map((e) => DistanceEntry.fromJson(e as Map<String, dynamic>))
-        .toList(),
-  );
+  factory DistanceHistory.fromJson(Map<String, dynamic> json) =>
+      DistanceHistory(
+        entries: (json['entries'] as List? ?? [])
+            .map((e) => DistanceEntry.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
 
   DistanceHistory addDistance(double distance) {
     final now = DateTime.now();
@@ -99,10 +98,7 @@ class DistanceHistory {
       return b.lastUsed.compareTo(a.lastUsed);
     });
 
-    return recentEntries
-        .take(limit)
-        .map((entry) => entry.distance)
-        .toList();
+    return recentEntries.take(limit).map((entry) => entry.distance).toList();
   }
 
   DistanceHistory cleanup() {
@@ -116,9 +112,7 @@ class DistanceHistory {
 
     recentEntries.sort((a, b) => b.lastUsed.compareTo(a.lastUsed));
 
-    return DistanceHistory(
-      entries: recentEntries.take(20).toList(),
-    );
+    return DistanceHistory(entries: recentEntries.take(20).toList());
   }
 
   double _roundDistance(double distance) {

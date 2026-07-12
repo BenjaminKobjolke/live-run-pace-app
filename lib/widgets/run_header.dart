@@ -16,14 +16,21 @@ class RunHeader extends StatelessWidget {
         const SizedBox(width: 20),
         const Text(
           'Next target distance',
-          style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w300),
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w300,
+          ),
         ),
         GestureDetector(
           onTap: onAbort,
           child: Container(
             width: 20,
             height: 20,
-            decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
             child: const Icon(Icons.close, color: Colors.black, size: 14),
           ),
         ),

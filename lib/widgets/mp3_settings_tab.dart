@@ -41,7 +41,10 @@ class Mp3SettingsTab extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('MP3 Sound After TTS', style: TextStyle(color: Colors.white, fontSize: 16)),
+            const Text(
+              'MP3 Sound After TTS',
+              style: TextStyle(color: Colors.white, fontSize: 16),
+            ),
             if (filePaths.isNotEmpty)
               Text(
                 '${filePaths.length} file${filePaths.length == 1 ? '' : 's'}',
@@ -61,9 +64,13 @@ class Mp3SettingsTab extends StatelessWidget {
         ],
         Row(
           children: [
-            Expanded(child: _addButton('Add Files', enabled ? onPickFiles : null)),
+            Expanded(
+              child: _addButton('Add Files', enabled ? onPickFiles : null),
+            ),
             const SizedBox(width: 8),
-            Expanded(child: _addButton('Add Folder', enabled ? onPickFolder : null)),
+            Expanded(
+              child: _addButton('Add Folder', enabled ? onPickFolder : null),
+            ),
           ],
         ),
       ],

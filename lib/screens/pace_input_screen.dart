@@ -102,15 +102,21 @@ class _PaceInputScreenState extends State<PaceInputScreen> {
                   Expanded(child: _buildField(_minutes, 'min', 0)),
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 8),
-                    child: Text(':',
-                        style: TextStyle(color: Colors.white, fontSize: 28)),
+                    child: Text(
+                      ':',
+                      style: TextStyle(color: Colors.white, fontSize: 28),
+                    ),
                   ),
                   Expanded(child: _buildField(_seconds, 'sec', 1)),
                   Padding(
                     padding: const EdgeInsets.only(left: 8),
-                    child: Text('/ $_unit',
-                        style: const TextStyle(
-                            color: Colors.white70, fontSize: 16)),
+                    child: Text(
+                      '/ $_unit',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 16,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -144,9 +150,10 @@ class _PaceInputScreenState extends State<PaceInputScreen> {
                   Expanded(
                     child: TextButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Cancel',
-                          style:
-                              TextStyle(color: Colors.white70, fontSize: 18)),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(color: Colors.white70, fontSize: 18),
+                      ),
                     ),
                   ),
                   Expanded(
@@ -158,12 +165,14 @@ class _PaceInputScreenState extends State<PaceInputScreen> {
                         ),
                       ),
                       onPressed: () => Navigator.of(context).pop(_pace),
-                      child: const Text('OK',
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          )),
+                      child: const Text(
+                        'OK',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -200,8 +209,10 @@ class _PaceInputScreenState extends State<PaceInputScreen> {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            Text(label,
-                style: const TextStyle(color: Colors.white54, fontSize: 12)),
+            Text(
+              label,
+              style: const TextStyle(color: Colors.white54, fontSize: 12),
+            ),
           ],
         ),
       ),
@@ -217,9 +228,7 @@ class _PaceInputScreenState extends State<PaceInputScreen> {
         decoration: BoxDecoration(
           color: isSelected ? Colors.green : Colors.white10,
           borderRadius: BorderRadius.circular(6),
-          border: Border.all(
-            color: isSelected ? Colors.green : Colors.white24,
-          ),
+          border: Border.all(color: isSelected ? Colors.green : Colors.white24),
         ),
         child: Text(
           unit,

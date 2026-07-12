@@ -39,11 +39,7 @@ class DigitKeypad extends StatelessWidget {
 
     return Column(
       children: rows.map((row) {
-        return Expanded(
-          child: Row(
-            children: row.map(_buildKey).toList(),
-          ),
-        );
+        return Expanded(child: Row(children: row.map(_buildKey).toList()));
       }).toList(),
     );
   }

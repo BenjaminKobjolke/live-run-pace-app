@@ -3,6 +3,7 @@ import '../models/running_session.dart';
 import '../services/storage_service.dart';
 import 'session_detail_screen.dart';
 
+/// Lists past sessions (newest first); tap opens details, long-press deletes.
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
 
@@ -28,9 +29,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
     }
   }
 
@@ -50,7 +49,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.white70),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
@@ -66,30 +68,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
     }
   }
 
-  String _formatDate(DateTime date) {
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    return '${date.day} ${months[date.month - 1]} ${date.year}';
-  }
-
-  String _formatTime(DateTime date) {
-    final hour = date.hour.toString().padLeft(2, '0');
-    final minute = date.minute.toString().padLeft(2, '0');
-    return '$hour:$minute';
-  }
-
-  String _formatDuration(Duration duration) {
-    final hours = duration.inHours;
-    final minutes = duration.inMinutes % 60;
-    final seconds = duration.inSeconds % 60;
-
-    if (hours > 0) {
-      return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-    } else {
-      return '$minutes:${seconds.toString().padLeft(2, '0')}';
-    }
+  void _openDetail(RunningSession session) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => SessionDetailScreen(session: session),
+      ),
+    );
   }
 
   @override
@@ -102,117 +86,166 @@ class _HistoryScreenState extends State<HistoryScreen> {
         title: const Text('Session History'),
         elevation: 0,
       ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: Colors.white),
-            )
-          : _sessions.isEmpty
-              ? const Center(
-                  child: Text(
-                    'No sessions yet.\nComplete a run to see history here.',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 16,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                )
-              : ListView.builder(
-                  itemCount: _sessions.length,
-                  itemBuilder: (context, index) {
-                    final session = _sessions[index];
-                    return Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      child: Card(
-                        color: const Color(0xFF1A1A1A),
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.all(16),
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) => SessionDetailScreen(session: session),
-                              ),
-                            );
-                          },
-                          onLongPress: () => _deleteSession(session),
-                          title: Row(
-                            children: [
-                              Text(
-                                '${session.distance.toStringAsFixed(1)} km',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              if (session.isAborted) ...[
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.orange.withValues(alpha: 0.2),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: Colors.orange, width: 1),
-                                  ),
-                                  child: const Text(
-                                    'ABORTED',
-                                    style: TextStyle(
-                                      color: Colors.orange,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                              const Spacer(),
-                              Text(
-                                _formatDate(session.startTime),
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  const Icon(Icons.access_time, color: Colors.white70, size: 16),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    _formatTime(session.startTime),
-                                    style: const TextStyle(color: Colors.white70, fontSize: 12),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  const Icon(Icons.timer, color: Colors.white70, size: 16),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    _formatDuration(session.totalTime),
-                                    style: const TextStyle(color: Colors.white70, fontSize: 12),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  const Icon(Icons.speed, color: Colors.white70, size: 16),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    session.averagePaceDisplay,
-                                    style: const TextStyle(color: Colors.white70, fontSize: 12),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          trailing: const Icon(
-                            Icons.chevron_right,
-                            color: Colors.white30,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
+      body: _buildBody(),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      );
+    }
+    if (_sessions.isEmpty) {
+      return const Center(
+        child: Text(
+          'No sessions yet.\nComplete a run to see history here.',
+          style: TextStyle(color: Colors.white70, fontSize: 16),
+          textAlign: TextAlign.center,
+        ),
+      );
+    }
+    return ListView.builder(
+      itemCount: _sessions.length,
+      itemBuilder: (context, index) {
+        final session = _sessions[index];
+        return _SessionHistoryTile(
+          session: session,
+          onTap: () => _openDetail(session),
+          onDelete: () => _deleteSession(session),
+        );
+      },
+    );
+  }
+}
+
+/// A single session card in the history list, with distance, an optional
+/// ABORTED badge, and start time / duration / average-pace stats.
+class _SessionHistoryTile extends StatelessWidget {
+  final RunningSession session;
+  final VoidCallback onTap;
+  final VoidCallback onDelete;
+
+  const _SessionHistoryTile({
+    required this.session,
+    required this.onTap,
+    required this.onDelete,
+  });
+
+  static const _months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+
+  String _formatDate(DateTime date) =>
+      '${date.day} ${_months[date.month - 1]} ${date.year}';
+
+  String _formatTime(DateTime date) =>
+      '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+
+  String _formatDuration(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = (duration.inMinutes % 60).toString().padLeft(2, '0');
+    final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
+    return hours > 0 ? '$hours:$minutes:$seconds' : '$minutes:$seconds';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Card(
+        color: const Color(0xFF1A1A1A),
+        child: ListTile(
+          contentPadding: const EdgeInsets.all(16),
+          onTap: onTap,
+          onLongPress: onDelete,
+          title: _buildTitle(),
+          subtitle: _buildSubtitle(),
+          trailing: const Icon(Icons.chevron_right, color: Colors.white30),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTitle() {
+    return Row(
+      children: [
+        Text(
+          '${session.distance.toStringAsFixed(1)} km',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        if (session.isAborted) ...[
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.orange.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.orange, width: 1),
+            ),
+            child: const Text(
+              'ABORTED',
+              style: TextStyle(
+                color: Colors.orange,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+        const Spacer(),
+        Text(
+          _formatDate(session.startTime),
+          style: const TextStyle(color: Colors.white70, fontSize: 14),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSubtitle() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            _stat(Icons.access_time, _formatTime(session.startTime)),
+            const SizedBox(width: 16),
+            _stat(Icons.timer, _formatDuration(session.totalTime)),
+            const SizedBox(width: 16),
+            _stat(Icons.speed, session.averagePaceDisplay),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _stat(IconData icon, String value) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: Colors.white70, size: 16),
+        const SizedBox(width: 4),
+        Text(
+          value,
+          style: const TextStyle(color: Colors.white70, fontSize: 12),
+        ),
+      ],
     );
   }
 }

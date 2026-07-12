@@ -6,13 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Accepted Rule Exceptions
 
-- **`lib/screens/main_screen.dart` exceeds the 300-line file limit (~420 lines).** It is a
-  cohesive real-time session coordinator (session state, timers, app lifecycle, TTS lifecycle,
-  gestures, navigation). Display pieces are already extracted to widgets
-  (`RunHeader`, `RunStatsView`, `RunControls`, `PausedOverlay`) and announcement text to
-  `AnnouncementBuilder`. Splitting the remaining logic cleanly needs a state-management layer
-  (Cubit) the project does not use yet. Upgrade path: introduce `flutter_bloc` and move the
-  mutation/timer logic into a `RunSessionCubit`.
+_None currently._
+
+The former `main_screen.dart` size/method-count exception was resolved by extracting the
+session state machine into `RunSessionController` (`lib/screens/run_session_controller.dart`),
+a `ChangeNotifier`. The screen widget rebuilds via `ListenableBuilder` — Flutter's stdlib
+observable, so no `flutter_bloc`/Cubit dependency was needed.
 
 ## Code Analysis
 

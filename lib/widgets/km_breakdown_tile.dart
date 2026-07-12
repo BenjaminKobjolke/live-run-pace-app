@@ -9,7 +9,11 @@ class KmBreakdownTile extends StatelessWidget {
   /// The owning session (for distance/pace context).
   final RunningSession session;
 
-  const KmBreakdownTile({super.key, required this.target, required this.session});
+  const KmBreakdownTile({
+    super.key,
+    required this.target,
+    required this.session,
+  });
 
   static String _formatTime(DateTime date) {
     final hour = date.hour.toString().padLeft(2, '0');
@@ -27,11 +31,13 @@ class KmBreakdownTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isUnderTarget =
-        target.actualTime != null && target.actualTime!.inSeconds < session.targetPace.inSeconds;
+        target.actualTime != null &&
+        target.actualTime!.inSeconds < session.targetPace.inSeconds;
 
     // Check if this is a partial last kilometer
     final isLastTarget = target.kmNumber == session.totalKilometers;
-    final lastSegmentDistance = session.distance - (session.totalKilometers - 1);
+    final lastSegmentDistance =
+        session.distance - (session.totalKilometers - 1);
     final isPartialLast = isLastTarget && lastSegmentDistance < 1.0;
 
     String distanceLabel;
@@ -80,7 +86,10 @@ class KmBreakdownTile extends StatelessWidget {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const Text('pace', style: TextStyle(color: Colors.white70, fontSize: 10)),
+            const Text(
+              'pace',
+              style: TextStyle(color: Colors.white70, fontSize: 10),
+            ),
           ],
         ),
       ),

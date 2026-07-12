@@ -16,6 +16,65 @@ String _formatDuration(Duration duration) {
 /// from the domain/model logic in `running_session.dart` (re-exported from it,
 /// so importers get these getters automatically).
 extension RunningSessionDisplay on RunningSession {
+  // Additional computed properties for session history
+  Duration get totalTime {
+    if (!isCompleted) return elapsedTime;
+
+    final completedTargets = targets
+        .where((target) => target.completedAt != null)
+        .toList();
+    if (completedTargets.isEmpty) return Duration.zero;
+
+    final startTime = completedTargets.first.completedAt!.subtract(
+      completedTargets.first.actualTime ?? Duration.zero,
+    );
+    final endTime = completedTargets.last.completedAt!;
+    return endTime.difference(startTime);
+  }
+
+  Duration get averagePace {
+    final completedTargets = targets
+        .where((target) => target.actualTime != null)
+        .toList();
+    if (completedTargets.isEmpty) return Duration.zero;
+
+    final totalTime = completedTargets.fold<Duration>(
+      Duration.zero,
+      (sum, target) => sum + (target.actualTime ?? Duration.zero),
+    );
+
+    return Duration(
+      seconds: (totalTime.inSeconds / completedTargets.length).round(),
+    );
+  }
+
+  List<Duration> get lapTimes {
+    return targets
+        .where((target) => target.actualTime != null)
+        .map((target) => target.actualTime!)
+        .toList();
+  }
+
+  Duration? get bestKmTime {
+    final times = lapTimes;
+    if (times.isEmpty) return null;
+    return times.reduce((a, b) => a.inSeconds < b.inSeconds ? a : b);
+  }
+
+  Duration? get worstKmTime {
+    final times = lapTimes;
+    if (times.isEmpty) return null;
+    return times.reduce((a, b) => a.inSeconds > b.inSeconds ? a : b);
+  }
+
+  int get completedKilometers {
+    return targets.where((target) => target.actualTime != null).length;
+  }
+
+  double get distanceCompleted {
+    return completedKilometers.toDouble();
+  }
+
   String get nextTargetTimeDisplay => _formatDuration(nextTargetTime);
 
   String get currentTimeDisplay => _formatDuration(elapsedTime);

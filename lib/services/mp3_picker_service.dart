@@ -68,15 +68,24 @@ class Mp3PickerService {
       AppLogger.d('Permission status: $status');
 
       if (status.isPermanentlyDenied) {
-        return Mp3PickResult(Mp3PickStatus.permissionPermanentlyDenied, androidVersion: androidVersion);
+        return Mp3PickResult(
+          Mp3PickStatus.permissionPermanentlyDenied,
+          androidVersion: androidVersion,
+        );
       }
       if (status.isDenied) {
-        return Mp3PickResult(Mp3PickStatus.permissionDenied, androidVersion: androidVersion);
+        return Mp3PickResult(
+          Mp3PickStatus.permissionDenied,
+          androidVersion: androidVersion,
+        );
       }
 
       final result = await _pickFilesForVersion(androidVersion);
       if (result == null || result.files.isEmpty) {
-        return Mp3PickResult(Mp3PickStatus.cancelled, androidVersion: androidVersion);
+        return Mp3PickResult(
+          Mp3PickStatus.cancelled,
+          androidVersion: androidVersion,
+        );
       }
 
       final newPaths = result.files
@@ -85,10 +94,18 @@ class Mp3PickerService {
           .where((path) => !existingPaths.contains(path))
           .toList();
 
-      return Mp3PickResult(Mp3PickStatus.added, paths: newPaths, androidVersion: androidVersion);
+      return Mp3PickResult(
+        Mp3PickStatus.added,
+        paths: newPaths,
+        androidVersion: androidVersion,
+      );
     } catch (e) {
       AppLogger.e('File picker error', error: e);
-      return Mp3PickResult(Mp3PickStatus.error, errorDetails: e.toString(), androidVersion: androidVersion);
+      return Mp3PickResult(
+        Mp3PickStatus.error,
+        errorDetails: e.toString(),
+        androidVersion: androidVersion,
+      );
     }
   }
 
@@ -103,34 +120,59 @@ class Mp3PickerService {
       AppLogger.d('Permission status: $status');
 
       if (status.isPermanentlyDenied) {
-        return Mp3PickResult(Mp3PickStatus.permissionPermanentlyDenied, androidVersion: androidVersion);
+        return Mp3PickResult(
+          Mp3PickStatus.permissionPermanentlyDenied,
+          androidVersion: androidVersion,
+        );
       }
       if (status.isDenied) {
-        return Mp3PickResult(Mp3PickStatus.permissionDenied, androidVersion: androidVersion);
+        return Mp3PickResult(
+          Mp3PickStatus.permissionDenied,
+          androidVersion: androidVersion,
+        );
       }
 
       final selectedDirectory = await FilePicker.platform.getDirectoryPath();
       if (selectedDirectory == null) {
-        return Mp3PickResult(Mp3PickStatus.cancelled, androidVersion: androidVersion);
+        return Mp3PickResult(
+          Mp3PickStatus.cancelled,
+          androidVersion: androidVersion,
+        );
       }
       AppLogger.d('Selected directory: $selectedDirectory');
 
       final audioFiles = await _getAudioFilesFromDirectory(selectedDirectory);
       if (audioFiles.isEmpty) {
-        return Mp3PickResult(Mp3PickStatus.emptyFolder, androidVersion: androidVersion);
+        return Mp3PickResult(
+          Mp3PickStatus.emptyFolder,
+          androidVersion: androidVersion,
+        );
       }
 
-      final newPaths = audioFiles.where((path) => !existingPaths.contains(path)).toList();
+      final newPaths = audioFiles
+          .where((path) => !existingPaths.contains(path))
+          .toList();
       if (newPaths.isEmpty) {
-        return Mp3PickResult(Mp3PickStatus.noNewFiles,
-            totalFound: audioFiles.length, androidVersion: androidVersion);
+        return Mp3PickResult(
+          Mp3PickStatus.noNewFiles,
+          totalFound: audioFiles.length,
+          androidVersion: androidVersion,
+        );
       }
 
       AppLogger.d('Added ${newPaths.length} audio files from folder');
-      return Mp3PickResult(Mp3PickStatus.added, paths: newPaths, androidVersion: androidVersion);
+      return Mp3PickResult(
+        Mp3PickStatus.added,
+        paths: newPaths,
+        androidVersion: androidVersion,
+      );
     } catch (e) {
       AppLogger.e('Folder picker error', error: e);
-      return Mp3PickResult(Mp3PickStatus.error, errorDetails: e.toString(), androidVersion: androidVersion);
+      return Mp3PickResult(
+        Mp3PickStatus.error,
+        errorDetails: e.toString(),
+        androidVersion: androidVersion,
+      );
     }
   }
 
@@ -149,7 +191,10 @@ class Mp3PickerService {
       // Android 11+ - try the audio type first.
       try {
         AppLogger.d('Trying audio file picker for Android $androidVersion...');
-        result = await FilePicker.platform.pickFiles(type: FileType.audio, allowMultiple: true);
+        result = await FilePicker.platform.pickFiles(
+          type: FileType.audio,
+          allowMultiple: true,
+        );
       } catch (audioError) {
         AppLogger.d('Audio file picker failed: $audioError');
         result = null;
@@ -171,7 +216,10 @@ class Mp3PickerService {
       // Android 8-specific fallback: any file type.
       if (androidVersion <= 28) {
         AppLogger.d('Trying any file type for Android $androidVersion...');
-        return await FilePicker.platform.pickFiles(type: FileType.any, allowMultiple: true);
+        return await FilePicker.platform.pickFiles(
+          type: FileType.any,
+          allowMultiple: true,
+        );
       }
       rethrow;
     }
@@ -181,12 +229,14 @@ class Mp3PickerService {
     final dir = Directory(dirPath);
     final audioFiles = <String>[];
     try {
-      await for (final entity in dir.list(recursive: true, followLinks: false)) {
-        if (entity is File) {
-          final extension = entity.path.split('.').last.toLowerCase();
-          if (_audioExtensions.contains(extension)) {
-            audioFiles.add(entity.path);
-          }
+      await for (final entity in dir.list(
+        recursive: true,
+        followLinks: false,
+      )) {
+        if (entity is! File) continue;
+        final extension = entity.path.split('.').last.toLowerCase();
+        if (_audioExtensions.contains(extension)) {
+          audioFiles.add(entity.path);
         }
       }
     } catch (e) {
