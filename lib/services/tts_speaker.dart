@@ -5,6 +5,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/services.dart';
 import '../models/tts_settings.dart';
+import 'app_logger.dart';
 
 class TtsSpeaker {
   final FlutterTts _tts = FlutterTts();
@@ -39,11 +40,11 @@ class TtsSpeaker {
 
     // Add basic audio interruption listener for debugging
     _session!.interruptionEventStream.listen((event) {
-      print('Audio interruption event: $event');
+      AppLogger.d('Audio interruption event: $event');
     });
 
     _session!.becomingNoisyEventStream.listen((_) {
-      print('Audio becoming noisy event detected');
+      AppLogger.d('Audio becoming noisy event detected');
     });
 
     // Only configure TTS if it's enabled
@@ -64,11 +65,16 @@ class TtsSpeaker {
     }
   }
 
-  Future<void> speak(String text) async {
-    print('=== Starting speak sequence ===');
-    print('TTS enabled: ${_settings.enabled}');
-    print('Pause other audio: ${_settings.pauseOtherAudio}');
-    print('MP3 files: ${_settings.mp3FilePaths.length} available');
+  /// Speaks [text] via TTS, then optionally plays a random MP3.
+  ///
+  /// Pass [playMp3] `true` to play a random configured MP3 after the TTS
+  /// (used for kilometer-completion announcements). Default `false` = TTS only,
+  /// used for pause/resume announcements which must not trigger an MP3.
+  Future<void> speak(String text, {bool playMp3 = false}) async {
+    AppLogger.d('=== Starting speak sequence ===');
+    AppLogger.d('TTS enabled: ${_settings.enabled}');
+    AppLogger.d('Pause other audio: ${_settings.pauseOtherAudio}');
+    AppLogger.d('MP3 files: ${_settings.mp3FilePaths.length} available');
 
     if (_session == null) await init();
 
@@ -77,47 +83,47 @@ class TtsSpeaker {
     try {
       // Request audio focus once for the entire sequence (TTS + MP3)
       if (shouldAcquireFocus) {
-        print('Requesting audio focus...');
+        AppLogger.d('Requesting audio focus...');
         _active = await _session!.setActive(true);
         if (_active) {
-          print('Audio focus acquired successfully');
+          AppLogger.d('Audio focus acquired successfully');
           // Add delay for focus acquisition to settle
           await Future.delayed(const Duration(milliseconds: 300));
         } else {
-          print('Audio focus denied, continuing without focus');
+          AppLogger.d('Audio focus denied, continuing without focus');
         }
       }
 
       // Execute TTS if enabled
       if (_settings.enabled) {
-        print('Starting TTS playback...');
+        AppLogger.d('Starting TTS playback...');
         await _tts.speak(text);
-        print('TTS playback completed');
+        AppLogger.d('TTS playback completed');
 
         // Small delay between TTS and MP3
         await Future.delayed(const Duration(milliseconds: 100));
       }
 
-      // Execute MP3 playback if available (keeping our audio focus)
-      if (_settings.mp3FilePaths.isNotEmpty) {
+      // Execute MP3 playback if requested and available (keeping our audio focus)
+      if (playMp3 && _settings.mp3FilePaths.isNotEmpty) {
         // Randomly select an MP3 file
         final random = Random();
         final selectedFile = _settings.mp3FilePaths[random.nextInt(_settings.mp3FilePaths.length)];
         final fileName = selectedFile.split('/').last;
-        print('Starting MP3 playback (with our audio focus) - selected: $fileName');
+        AppLogger.d('Starting MP3 playback (with our audio focus) - selected: $fileName');
         await _playMp3WithFocus(selectedFile);
-        print('MP3 playback completed');
+        AppLogger.d('MP3 playback completed');
       }
 
-      print('=== Speak sequence completed successfully ===');
+      AppLogger.d('=== Speak sequence completed successfully ===');
     } catch (e) {
-      print('Error in speak sequence: $e');
+      AppLogger.e('Error in speak sequence', error: e);
     } finally {
       // Always release focus after the complete sequence
       if (shouldAcquireFocus && _active) {
-        print('Releasing audio focus...');
+        AppLogger.d('Releasing audio focus...');
         await _release();
-        print('Audio focus released');
+        AppLogger.d('Audio focus released');
       }
     }
   }
@@ -126,7 +132,7 @@ class TtsSpeaker {
     if (_audioPlayer == null || filePath.isEmpty) return;
 
     try {
-      print('Playing MP3 file: $filePath');
+      AppLogger.d('Playing MP3 file: $filePath');
 
       // Start MP3 playback
       await _audioPlayer!.play(DeviceFileSource(filePath));
@@ -138,14 +144,14 @@ class TtsSpeaker {
       late StreamSubscription subscription;
 
       subscription = _audioPlayer!.onPlayerComplete.listen((_) {
-        print('MP3 playback completed via onPlayerComplete');
+        AppLogger.d('MP3 playback completed via onPlayerComplete');
         if (!completer.isCompleted) completer.complete();
       });
 
       try {
         await completer.future.timeout(
           const Duration(seconds: 30),
-          onTimeout: () => print('MP3 playback timed out'),
+          onTimeout: () => AppLogger.d('MP3 playback timed out'),
         );
       } finally {
         await subscription.cancel();
@@ -155,42 +161,15 @@ class TtsSpeaker {
       // (ReleaseMode.stop), so it keeps draining during this wait.
       // User-configurable (Settings -> "Delay after audio").
       if (_settings.delayAfterAudioMs > 0) {
-        print('Draining audio tail for ${_settings.delayAfterAudioMs} ms...');
+        AppLogger.d('Draining audio tail for ${_settings.delayAfterAudioMs} ms...');
         await Future.delayed(Duration(milliseconds: _settings.delayAfterAudioMs));
       }
       await _audioPlayer!.stop(); // free for next playback
-      print('MP3 player stopped');
+      AppLogger.d('MP3 player stopped');
 
     } catch (e) {
-      print('MP3 playback error: $e');
+      AppLogger.e('MP3 playback error', error: e);
       rethrow;
-    }
-  }
-
-  // Legacy method for backward compatibility (when TTS is disabled)
-  Future<void> _playMp3() async {
-    if (_settings.mp3FilePaths.isNotEmpty) {
-      // If MP3 files are available, manage focus for MP3 only
-      bool shouldAcquireFocus = _settings.pauseOtherAudio && !_active;
-
-      try {
-        if (shouldAcquireFocus) {
-          print('Acquiring focus for MP3-only playback...');
-          _active = await _session!.setActive(true);
-          await Future.delayed(const Duration(milliseconds: 300));
-        }
-
-        // Randomly select an MP3 file
-        final random = Random();
-        final selectedFile = _settings.mp3FilePaths[random.nextInt(_settings.mp3FilePaths.length)];
-        final fileName = selectedFile.split('/').last;
-        print('MP3-only playback - selected: $fileName');
-        await _playMp3WithFocus(selectedFile);
-      } finally {
-        if (shouldAcquireFocus && _active) {
-          await _release();
-        }
-      }
     }
   }
 
@@ -204,37 +183,37 @@ class TtsSpeaker {
 
   Future<void> _release() async {
     if (_active && _session != null) {
-      print('Releasing audio focus - other apps should resume now');
+      AppLogger.d('Releasing audio focus - other apps should resume now');
       _active = false;
       try {
         await _session!.setActive(false); // Release focus so other audio resumes
-        print('Audio focus released successfully');
+        AppLogger.d('Audio focus released successfully');
         // Add a small delay to ensure the focus release is processed
         await Future.delayed(const Duration(milliseconds: 100));
 
         // Resume AIMP if configured (for both TTS-only and TTS+MP3 cases)
         if (_settings.resumeAimpAfterPlayback) {
           // Add extra delay before resuming AIMP to ensure it's ready
-          print('Waiting before resuming AIMP...');
+          AppLogger.d('Waiting before resuming AIMP...');
           await Future.delayed(const Duration(seconds: 1));
           await _resumeAimpPlayback();
         }
       } catch (e) {
-        print('Error releasing audio focus: $e');
+        AppLogger.e('Error releasing audio focus', error: e);
       }
     } else {
-      print('No audio focus to release (not active or no session)');
+      AppLogger.d('No audio focus to release (not active or no session)');
     }
   }
 
   Future<void> _resumeAimpPlayback() async {
     try {
-      print('Attempting to resume AIMP playback...');
+      AppLogger.d('Attempting to resume AIMP playback...');
       // Send play command only once to avoid toggling
       await _channel.invokeMethod('resumeAimp');
-      print('AIMP resume command sent successfully');
+      AppLogger.d('AIMP resume command sent successfully');
     } catch (e) {
-      print('Error resuming AIMP: $e');
+      AppLogger.e('Error resuming AIMP', error: e);
     }
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/running_session.dart';
+import '../widgets/km_breakdown_tile.dart';
 
 class SessionDetailScreen extends StatelessWidget {
   final RunningSession session;
@@ -82,7 +83,7 @@ class SessionDetailScreen extends StatelessWidget {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                             decoration: BoxDecoration(
-                              color: Colors.orange.withOpacity(0.2),
+                              color: Colors.orange.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(color: Colors.orange, width: 1),
                             ),
@@ -208,73 +209,7 @@ class SessionDetailScreen extends StatelessWidget {
                 ),
               )
             else
-              ...completedTargets.map((target) {
-                final isUnderTarget = target.actualTime != null &&
-                    target.actualTime!.inSeconds < session.targetPace.inSeconds;
-
-                // Check if this is a partial last kilometer
-                final isLastTarget = target.kmNumber == session.totalKilometers;
-                final lastSegmentDistance = session.distance - (session.totalKilometers - 1);
-                final isPartialLast = isLastTarget && lastSegmentDistance < 1.0;
-
-                String distanceLabel;
-                String circleLabel;
-                if (isPartialLast) {
-                  final meters = (lastSegmentDistance * 1000).round();
-                  distanceLabel = '$meters meters';
-                  circleLabel = '${(lastSegmentDistance * 1000).round()}m';
-                  // Shorten circle label if too long
-                  if (circleLabel.length > 4) {
-                    circleLabel = '${target.kmNumber}';
-                  }
-                } else {
-                  distanceLabel = 'Kilometer ${target.kmNumber}';
-                  circleLabel = '${target.kmNumber}';
-                }
-
-                return Card(
-                  color: const Color(0xFF1A1A1A),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: isUnderTarget ? Colors.green : Colors.red,
-                      child: Text(
-                        circleLabel,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: circleLabel.length > 3 ? 12 : 14,
-                        ),
-                      ),
-                    ),
-                    title: Text(
-                      distanceLabel,
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                    subtitle: Text(
-                      'Completed at ${target.completedAt != null ? _formatTime(target.completedAt!) : 'Unknown'}',
-                      style: const TextStyle(color: Colors.white70, fontSize: 12),
-                    ),
-                    trailing: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          _formatPace(target.actualTime),
-                          style: TextStyle(
-                            color: isUnderTarget ? Colors.green : Colors.red,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          'pace',
-                          style: const TextStyle(color: Colors.white70, fontSize: 10),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
+              ...completedTargets.map((target) => KmBreakdownTile(target: target, session: session)),
 
             const SizedBox(height: 16),
 

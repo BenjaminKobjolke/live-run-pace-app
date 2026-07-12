@@ -1,3 +1,7 @@
+// Display-only formatting getters live in an extension re-exported here, so
+// importing this file makes them available without a second import.
+export 'running_session_display.dart';
+
 enum PaceStatus {
   onSchedule,
   behindSchedule,
@@ -114,60 +118,7 @@ class RunningSession {
     return Duration(seconds: (targetPace.inSeconds * currentKm).round());
   }
 
-  // Helper method to format duration consistently
-  String _formatDuration(Duration duration) {
-    final hours = duration.inHours;
-    final minutes = duration.inMinutes % 60;
-    final seconds = duration.inSeconds % 60;
-
-    if (hours > 0) {
-      return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-    } else {
-      return '$minutes:${seconds.toString().padLeft(2, '0')}';
-    }
-  }
-
-  String get nextTargetTimeDisplay {
-    return _formatDuration(nextTargetTime);
-  }
-
-  String get currentTimeDisplay {
-    return _formatDuration(elapsedTime);
-  }
-
-  String get timeLeftDisplay {
-    final left = timeLeftForCurrentKm;
-    final absLeft = left.abs();
-    final timeString = _formatDuration(absLeft);
-    return left.isNegative ? '-$timeString' : timeString;
-  }
-
   bool get isOverTime => timeLeftForCurrentKm.isNegative;
-
-  String get finishTimeDisplay {
-    final completedKm = currentKm - 1;
-
-    // If no km completed yet, show original estimated finish time
-    if (completedKm == 0) {
-      return originalEstimatedFinishTime;
-    }
-
-    final elapsed = elapsedTime;
-    final remainingKm = distance - completedKm;
-
-    // Calculate estimated remaining time based on target pace
-    final estimatedRemainingTime = Duration(
-      seconds: (remainingKm * targetPace.inSeconds).round(),
-    );
-
-    final estimatedTotal = elapsed + estimatedRemainingTime;
-    return _formatDuration(estimatedTotal);
-  }
-
-  String get originalEstimatedFinishTime {
-    final total = Duration(seconds: (distance * targetPace.inSeconds).round());
-    return _formatDuration(total);
-  }
 
   bool get isLastKilometer => currentKm >= totalKilometers;
 
@@ -183,26 +134,6 @@ class RunningSession {
 
   bool get isPartialLastKilometer {
     return isLastKilometer && lastSegmentDistance < 1.0;
-  }
-
-  String get currentSegmentDistanceDisplay {
-    if (isPartialLastKilometer) {
-      final meters = (lastSegmentDistance * 1000).round();
-      if (meters < 1000) {
-        return '$meters m';
-      }
-      return '${lastSegmentDistance.toStringAsFixed(3)} km';
-    }
-    return '$currentKm km';
-  }
-
-  String get currentPaceDisplay {
-    if (currentKm <= 1) return '--:--';
-
-    final avgTimePerKm = elapsedTime.inSeconds / (currentKm - 1);
-    final minutes = (avgTimePerKm / 60).floor();
-    final seconds = (avgTimePerKm % 60).round();
-    return '$minutes:${seconds.toString().padLeft(2, '0')}';
   }
 
   bool get isAheadOfSchedule {
@@ -256,15 +187,6 @@ class RunningSession {
     return Duration(seconds: (totalTime.inSeconds / completedTargets.length).round());
   }
 
-  String get averagePaceDisplay {
-    final pace = averagePace;
-    if (pace == Duration.zero) return '--:--';
-
-    final minutes = pace.inMinutes;
-    final seconds = pace.inSeconds % 60;
-    return '$minutes:${seconds.toString().padLeft(2, '0')}';
-  }
-
   List<Duration> get lapTimes {
     return targets
         .where((t) => t.actualTime != null)
@@ -284,33 +206,12 @@ class RunningSession {
     return times.reduce((a, b) => a.inSeconds > b.inSeconds ? a : b);
   }
 
-  // Computed properties for aborted sessions
-  String get statusDisplay {
-    if (isAborted) return 'Aborted';
-    if (isCompleted) return 'Completed';
-    return 'In Progress';
-  }
-
   int get completedKilometers {
     return targets.where((t) => t.actualTime != null).length;
   }
 
   double get distanceCompleted {
     return completedKilometers.toDouble();
-  }
-
-  String get completionSummary {
-    if (isAborted) {
-      if (completedKilometers == 0) {
-        return 'Aborted before completing any kilometers';
-      } else {
-        return 'Aborted after $completedKilometers of ${distance.toStringAsFixed(1)} km';
-      }
-    }
-    if (isCompleted) {
-      return 'Completed ${distance.toStringAsFixed(1)} km';
-    }
-    return 'In progress: $completedKilometers of ${distance.toStringAsFixed(1)} km';
   }
 
   Map<String, dynamic> toJson() => {

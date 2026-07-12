@@ -7,7 +7,13 @@ import '../models/running_session.dart';
 import '../models/tts_settings.dart';
 import '../services/storage_service.dart';
 import '../services/tts_speaker.dart';
-import 'start_screen.dart';
+import '../services/app_logger.dart';
+import '../services/announcement_builder.dart';
+import '../widgets/run_stats_view.dart';
+import '../widgets/paused_overlay.dart';
+import '../widgets/run_controls.dart';
+import '../widgets/run_header.dart';
+import '../widgets/confirm_dialog.dart';
 import 'completion_screen.dart';
 import 'home_screen.dart';
 
@@ -27,6 +33,14 @@ class MainScreen extends StatefulWidget {
   State<MainScreen> createState() => _MainScreenState();
 }
 
+// ponytail: ~420 lines, over the 300 guideline. This is a cohesive real-time
+// coordinator (session state + 3 timers + app-lifecycle + TTS lifecycle +
+// gestures + navigation). Display chunks are already extracted to widgets
+// (RunHeader/RunStatsView/RunControls/PausedOverlay) and announcement text to
+// AnnouncementBuilder. Splitting the remaining logic cleanly needs a
+// state-management layer (Cubit) the project intentionally does not use yet;
+// upgrade path: introduce flutter_bloc and move the mutation/timer logic into a
+// RunSessionCubit. Tracked as an accepted exception in CLAUDE.md.
 class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   late RunningSession _session;
   Timer? _timer;
@@ -53,7 +67,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     try {
       await _ttsSpeaker!.init();
     } catch (e) {
-      print('TTS Speaker initialization failed: $e');
+      AppLogger.e('TTS Speaker initialization failed', error: e);
       _ttsSpeaker = null;
     }
   }
@@ -182,7 +196,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     try {
       await StorageService.instance.addDistanceToHistory(_session.distance);
     } catch (e) {
-      print('Error recording distance to history: $e');
+      AppLogger.e('Error recording distance to history', error: e);
     }
   }
 
@@ -218,7 +232,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     });
 
     try {
-      if (await Vibration.hasVibrator() ?? false) {
+      if (await Vibration.hasVibrator()) {
         await Vibration.vibrate(duration: 200);
       }
     } catch (e) {
@@ -238,74 +252,12 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   Future<void> _announceProgress() async {
     if (_isAppInBackground) return;
-
     if (_ttsSpeaker == null) return;
 
     try {
-      String announcement;
-
-      final justCompletedKm = _session.currentKm - 1;
-      final nextTargetKm = _session.currentKm;
-
-      if (_session.isLastKilometer) {
-        final timeLeft = _session.timeLeftForCurrentKm;
-        final absTime = timeLeft.abs();
-        final minutes = absTime.inMinutes;
-        final seconds = absTime.inSeconds % 60;
-
-        if (_session.isPartialLastKilometer) {
-          final meters = (_session.lastSegmentDistance * 1000).round();
-          announcement = "Final $meters meters! You have $minutes minutes and $seconds seconds left to finish.";
-        } else {
-          announcement = "Final kilometer! You have $minutes minutes and $seconds seconds left to finish.";
-        }
-      } else {
-        final paceStatus = _session.paceStatus;
-        final timeLeft = _session.timeLeftForCurrentKm;
-        final absTime = timeLeft.abs();
-        final minutes = absTime.inMinutes;
-        final seconds = absTime.inSeconds % 60;
-
-        // Check if the NEXT kilometer will be a partial one
-        final isNextPartial = (nextTargetKm == _session.totalKilometers) &&
-                              (_session.distance - (nextTargetKm - 1)) < 1.0;
-        String nextTargetDescription;
-
-        if (isNextPartial) {
-          final nextSegmentDistance = _session.distance - (nextTargetKm - 1);
-          final meters = (nextSegmentDistance * 1000).round();
-          nextTargetDescription = "the final $meters meters";
-        } else {
-          nextTargetDescription = "kilometer $nextTargetKm";
-        }
-
-        switch (paceStatus) {
-          case PaceStatus.onSchedule:
-            announcement = "Kilometer $justCompletedKm completed in time! The next target is $nextTargetDescription. You have $minutes minutes and $seconds seconds left to reach the next target.";
-            break;
-          case PaceStatus.behindSchedule:
-            final maxPaceMinutes = _session.maxPace.inMinutes;
-            final maxPaceSeconds = _session.maxPace.inSeconds % 60;
-            if (isNextPartial) {
-              // For partial segments, adjust the catch-up time proportionally
-              final nextSegmentDistance = _session.distance - (nextTargetKm - 1);
-              final adjustedMaxPaceSeconds = (_session.maxPace.inSeconds * nextSegmentDistance).round();
-              final adjMinutes = adjustedMaxPaceSeconds ~/ 60;
-              final adjSeconds = adjustedMaxPaceSeconds % 60;
-              announcement = "Kilometer $justCompletedKm completed. You're behind schedule. Run $nextTargetDescription in $adjMinutes minutes and $adjSeconds seconds to catch up.";
-            } else {
-              announcement = "Kilometer $justCompletedKm completed. You're behind schedule. Run the next kilometer in $maxPaceMinutes minutes and $maxPaceSeconds seconds to catch up.";
-            }
-            break;
-          case PaceStatus.aheadOfSchedule:
-            announcement = "Kilometer $justCompletedKm completed. Slow down! You have $minutes minutes and $seconds seconds left to reach $nextTargetDescription!";
-            break;
-        }
-      }
-
-      await _ttsSpeaker!.speak(announcement);
+      await _ttsSpeaker!.speak(AnnouncementBuilder.build(_session), playMp3: true);
     } catch (e) {
-      print('Announcement error: $e');
+      AppLogger.e('Announcement error', error: e);
     }
   }
 
@@ -330,34 +282,14 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     }
   }
 
-  void _showFinishConfirmation() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF333333),
-        title: const Text(
-          'Finish Session?',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: const Text(
-          'Are you sure you want to finish this running session?',
-          style: TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _finishSession();
-            },
-            child: const Text('Finish', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
+  Future<void> _showFinishConfirmation() async {
+    final ok = await showConfirmDialog(
+      context,
+      title: 'Finish Session?',
+      message: 'Are you sure you want to finish this running session?',
+      confirmLabel: 'Finish',
     );
+    if (ok) _finishSession();
   }
 
   void _finishSession() {
@@ -384,34 +316,15 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     );
   }
 
-  void _showAbortConfirmation() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF333333),
-        title: const Text(
-          'Abort Session?',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: const Text(
-          'Are you sure you want to abort this running session? All progress will be lost.',
-          style: TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _abortSession();
-            },
-            child: const Text('Abort', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
+  Future<void> _showAbortConfirmation() async {
+    final ok = await showConfirmDialog(
+      context,
+      title: 'Abort Session?',
+      message: 'Are you sure you want to abort this running session? All progress will be lost.',
+      confirmLabel: 'Abort',
+      confirmColor: Colors.red,
     );
+    if (ok) _abortSession();
   }
 
   void _abortSession() async {
@@ -422,6 +335,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     await StorageService.instance.saveSessionToHistory(abortedSession);
     await StorageService.instance.clearActiveSession();
 
+    if (!mounted) return;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (context) => const HomeScreen()),
     );
@@ -429,12 +343,12 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   Future<void> _triggerAimpPlay() async {
     try {
-      print('Screen tap detected, calling toggleAimp');
-      print('Triggering AIMP toggle from screen tap');
+      AppLogger.d('Screen tap detected, calling toggleAimp');
+      AppLogger.d('Triggering AIMP toggle from screen tap');
       await _aimpChannel.invokeMethod('toggleAimp');
-      print('AIMP toggle command sent');
+      AppLogger.d('AIMP toggle command sent');
     } catch (e) {
-      print('Error triggering AIMP toggle: $e');
+      AppLogger.e('Error triggering AIMP toggle', error: e);
     }
   }
 
@@ -452,7 +366,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       try {
         await _ttsSpeaker!.dispose();
       } catch (e) {
-        print('TTS Speaker cleanup failed: $e');
+        AppLogger.e('TTS Speaker cleanup failed', error: e);
       } finally {
         _ttsSpeaker = null;
       }
@@ -470,36 +384,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const SizedBox(width: 20),
-                      const Text(
-                        'Next target distance',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w300,
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: _showAbortConfirmation,
-                        child: Container(
-                          width: 20,
-                          height: 20,
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.close,
-                            color: Colors.black,
-                            size: 14,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                  RunHeader(onAbort: _showAbortConfirmation),
 
                   // Wrap the main content area in a GestureDetector for AIMP control and double tap
                   Expanded(
@@ -508,168 +393,17 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                       onDoubleTap: (widget.ttsSettings.doubleTapToCompleteKm && _buttonsEnabled) ? _goToNextKm : null,
                       onLongPress: _buttonsEnabled ? _pauseSession : null,
                       behavior: HitTestBehavior.opaque,
-                      child: Column(
-                        children: [
-                          const SizedBox(height: 8),
-
-                          Text(
-                            _session.currentSegmentDistanceDisplay,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-
-                  const SizedBox(height: 16),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      Column(
-                        children: [
-                          const Text(
-                            'Current',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            _session.currentTimeDisplay,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Column(
-                        children: [
-                          const Text(
-                            'Next target',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            _session.nextTargetTimeDisplay,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  const Text(
-                    'Time left',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 12,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-
-                  Text(
-                    _session.timeLeftDisplay,
-                    style: TextStyle(
-                      color: _session.isOverTime ? Colors.red : Colors.green,
-                      fontSize: 42,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  const Text(
-                    'Finish time',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 12,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-
-                          Text(
-                            _session.finishTimeDisplay,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-
-                          const Spacer(),
-                        ],
-                      ),
+                      child: RunStatsView(session: _session),
                     ),
                   ),
 
                   // Buttons are outside the GestureDetector so they work normally
-                  Row(
-                    children: [
-                      Expanded(
-                        flex: 1,
-                        child: ElevatedButton(
-                          onPressed: (_buttonsEnabled && _session.currentKm > 1) ? _goToPreviousKm : null,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            foregroundColor: _buttonsEnabled ? Colors.white : Colors.white30,
-                            side: BorderSide(
-                              color: _buttonsEnabled ? Colors.white : Colors.white30,
-                              width: 2,
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                          ),
-                          child: Icon(
-                            Icons.arrow_back,
-                            size: 20,
-                            color: _buttonsEnabled ? Colors.white : Colors.white30,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        flex: 3,
-                        child: ElevatedButton(
-                          onPressed: _buttonsEnabled ? _goToNextKm : null,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            foregroundColor: _buttonsEnabled ? Colors.white : Colors.white30,
-                            side: BorderSide(
-                              color: _buttonsEnabled ? Colors.white : Colors.white30,
-                              width: 2,
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                          ),
-                          child: Text(
-                            _session.isLastKilometer ? 'FINISH!' : 'GOT IT!',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1,
-                              color: _buttonsEnabled ? Colors.white : Colors.white30,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                  RunControls(
+                    enabled: _buttonsEnabled,
+                    canGoPrevious: _session.currentKm > 1,
+                    isLastKilometer: _session.isLastKilometer,
+                    onPrevious: _goToPreviousKm,
+                    onNext: _goToNextKm,
                   ),
 
                   const SizedBox(height: 16),
@@ -685,55 +419,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
               color: Colors.white,
             ),
 
-          if (_isPaused)
-            Container(
-              width: double.infinity,
-              height: double.infinity,
-              color: Colors.black,
-              child: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text(
-                        'Paused',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 42,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _continueSession,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            foregroundColor: Colors.white,
-                            side: const BorderSide(color: Colors.white, width: 2),
-                            padding: const EdgeInsets.symmetric(vertical: 20),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                          ),
-                          child: const Text(
-                            'CONTINUE',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+          if (_isPaused) PausedOverlay(onContinue: _continueSession),
         ],
       ),
     );

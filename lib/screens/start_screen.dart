@@ -4,6 +4,7 @@ import '../models/tts_settings.dart';
 import '../services/storage_service.dart';
 import '../widgets/distance_dialog.dart';
 import '../widgets/pace_dialog.dart';
+import '../widgets/tap_value_box.dart';
 import 'main_screen.dart';
 import 'settings_screen.dart';
 
@@ -153,25 +154,9 @@ class _StartScreenState extends State<StartScreen> {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        GestureDetector(
+                        TapValueBox(
+                          value: '${_settings.distance.toStringAsFixed(3)} km',
                           onTap: _showDistanceDialog,
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.white, width: 2),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              '${_settings.distance.toStringAsFixed(3)} km',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
                         ),
                       ],
                     ),
@@ -221,26 +206,7 @@ class _StartScreenState extends State<StartScreen> {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        GestureDetector(
-                          onTap: _showTargetPaceDialog,
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.white, width: 2),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              _settings.paceDisplay,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ),
+                        TapValueBox(value: _settings.paceDisplay, onTap: _showTargetPaceDialog),
                       ],
                     ),
                   ),
@@ -256,26 +222,7 @@ class _StartScreenState extends State<StartScreen> {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        GestureDetector(
-                          onTap: _showMaxPaceDialog,
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.white, width: 2),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              _settings.maxPaceDisplay,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ),
+                        TapValueBox(value: _settings.maxPaceDisplay, onTap: _showMaxPaceDialog),
                       ],
                     ),
                   ),
