@@ -63,6 +63,26 @@ opens showing the last-saved values.
   `Permission.storage`. Denied/permanently-denied/empty-folder/error cases each
   show a nested `AlertDialog` (these dialogs are fine layered over the full screen).
 
+## Post-TTS MP3 playback
+
+Handled at runtime by `tts_speaker.dart` → `_playMp3WithFocus`. After a TTS
+announcement finishes, a random file from `mp3FilePaths` is played via
+`audioplayers` (`DeviceFileSource`).
+
+Completion handling:
+
+- **Natural end** (`onPlayerComplete`): wait `delayAfterAudioMs`, then let
+  audioplayers' default `ReleaseMode.release` free the source — **no** explicit
+  `stop()`.
+- **Timeout / spurious `PlayerState.stopped`**: call `stop()` to tear down the
+  stuck player.
+
+**Why `delayAfterAudioMs` exists:** on Android, `onPlayerComplete` fires at
+end-of-**data** while ~1-2s of decoded audio is still queued in the hardware
+buffer. Calling `stop()` immediately flushes that buffer and clips the tail. The
+delay drains it before teardown. It's a per-device tuning knob — default 1000 ms;
+`0` disables the wait.
+
 ## Persistence & compatibility
 
 `StorageService` JSON-encodes `TtsSettings.toJson()` into `SharedPreferences`
