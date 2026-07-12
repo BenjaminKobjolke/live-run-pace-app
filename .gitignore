@@ -7,6 +7,10 @@ tools/analyze_code_config.bat
 code_analysis_results/
 dart_lsp.json
 
+# graphify knowledge graph output
+graphify-out/
+lib/graphify-out/
+
 # Miscellaneous
 *.class
 *.lock
@@ -208,3 +212,8 @@ claude-plans
 
 # FVM Version Cache
 .fvm/
+.dart_tool
+.fvm
+.idea
+code_analysis_results
+graphify-out
