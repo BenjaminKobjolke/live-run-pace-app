@@ -8,6 +8,11 @@ Live Run Pace App is a Flutter application designed for runners to track their p
 
 ## Development Commands
 
+> **Flutter runs via [fvm](https://fvm.app), not a global `flutter` on PATH.**
+> Version is pinned in `.fvmrc` (currently 3.44.1). Prefix every command with `fvm`:
+> `fvm flutter run`, `fvm flutter analyze`, `fvm flutter pub get`, etc.
+> Bare `flutter ...` fails with "'flutter' is not recognized".
+
 ### Initial Setup
 ```bash
 # After cloning, regenerate platform directories
