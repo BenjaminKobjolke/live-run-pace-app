@@ -1,3 +1,7 @@
+# Build+upload tooling secrets/artifacts
+tools/ftp_sync.ini
+tools/upload/
+
 # Miscellaneous
 *.class
 *.lock
@@ -6,8 +10,6 @@
 *.swp
 .buildlog/
 .history
-
-
 
 # Flutter repo-specific
 /bin/cache/
@@ -197,3 +199,7 @@ web/
 !/dev/ci/**/Gemfile.lock
 screenshots
 .claude
+claude-plans
+
+# FVM Version Cache
+.fvm/
