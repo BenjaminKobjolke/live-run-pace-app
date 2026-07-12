@@ -119,6 +119,30 @@
     },
     "custom_disposable_types": {}
   },
+  "dart_crap_score": {
+    "enabled": true,
+    "run_tests": true,
+    "reuse_existing_coverage": true,
+    "lcov_path": "coverage/lcov.info",
+    "analyze_path": "lib",
+    "test_timeout": 600,
+    "warning": 15,
+    "error": 30,
+    "keep_report": false,
+    "exclude_patterns": ["*.g.dart", "*.freezed.dart"],
+    "exceptions": []
+  },
+  "graphify_fanout": {
+    "enabled": true,
+    "warning": 20,
+    "error": 32,
+    "ratio_max": 0.25,
+    "graph_path": "graphify-out/graph.json",
+    "hub_classes": [],
+    "hub_autodetect": true,
+    "hub_autodetect_percentile": 95,
+    "exceptions": []
+  },
   "dart_test_coverage": {
     "enabled": false,
     "run_tests": true,
