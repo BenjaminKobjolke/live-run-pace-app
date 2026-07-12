@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'services/storage_service.dart';
-import 'screens/start_screen.dart';
+import 'screens/home_screen.dart';
 import 'screens/main_screen.dart';
 
 void main() {
@@ -67,7 +67,7 @@ class _AppLoaderState extends State<AppLoader> {
       } else {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
-            builder: (context) => const StartScreen(),
+            builder: (context) => const HomeScreen(),
           ),
         );
       }

@@ -3,12 +3,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/app_settings.dart';
 import '../models/running_session.dart';
 import '../models/tts_settings.dart';
+import '../models/distance_history.dart';
 
 class StorageService {
   static const String _settingsKey = 'app_settings';
   static const String _ttsSettingsKey = 'tts_settings';
   static const String _activeSessionKey = 'active_session';
   static const String _sessionHistoryKey = 'session_history';
+  static const String _distanceHistoryKey = 'distance_history';
 
   static StorageService? _instance;
   static StorageService get instance => _instance ??= StorageService._();
@@ -106,6 +108,45 @@ class StorageService {
 
     final historyJson = jsonEncode(history.map((s) => s.toJson()).toList());
     await _prefs!.setString(_sessionHistoryKey, historyJson);
+  }
+
+  Future<void> deleteSession(String sessionId) async {
+    await init();
+    final history = await loadSessionHistory();
+    history.removeWhere((session) => session.id == sessionId);
+
+    final historyJson = jsonEncode(history.map((s) => s.toJson()).toList());
+    await _prefs!.setString(_sessionHistoryKey, historyJson);
+  }
+
+  Future<DistanceHistory> loadDistanceHistory() async {
+    await init();
+    final historyJson = _prefs!.getString(_distanceHistoryKey);
+    if (historyJson == null) return const DistanceHistory();
+
+    try {
+      final json = jsonDecode(historyJson) as Map<String, dynamic>;
+      return DistanceHistory.fromJson(json);
+    } catch (e) {
+      return const DistanceHistory();
+    }
+  }
+
+  Future<void> saveDistanceHistory(DistanceHistory history) async {
+    await init();
+    final historyJson = jsonEncode(history.toJson());
+    await _prefs!.setString(_distanceHistoryKey, historyJson);
+  }
+
+  Future<void> addDistanceToHistory(double distance) async {
+    final history = await loadDistanceHistory();
+    final updatedHistory = history.addDistance(distance).cleanup();
+    await saveDistanceHistory(updatedHistory);
+  }
+
+  Future<List<double>> getDistanceSuggestions({int limit = 8}) async {
+    final history = await loadDistanceHistory();
+    return history.getSuggestions(limit: limit);
   }
 
   Future<void> clearAllData() async {

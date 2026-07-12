@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/running_session.dart';
-import 'start_screen.dart';
+import 'home_screen.dart';
 
 class CompletionScreen extends StatelessWidget {
   final RunningSession session;
@@ -70,6 +70,20 @@ class CompletionScreen extends StatelessWidget {
                   itemCount: completedTargets.length,
                   itemBuilder: (context, index) {
                     final target = completedTargets[index];
+
+                    // Check if this is a partial last kilometer
+                    final isLastTarget = target.kmNumber == session.totalKilometers;
+                    final lastSegmentDistance = session.distance - (session.totalKilometers - 1);
+                    final isPartialLast = isLastTarget && lastSegmentDistance < 1.0;
+
+                    String distanceLabel;
+                    if (isPartialLast) {
+                      final meters = (lastSegmentDistance * 1000).round();
+                      distanceLabel = '$meters m';
+                    } else {
+                      distanceLabel = 'Km ${target.kmNumber}';
+                    }
+
                     return Container(
                       margin: const EdgeInsets.only(bottom: 8),
                       padding: const EdgeInsets.all(12),
@@ -82,7 +96,7 @@ class CompletionScreen extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'Km ${target.kmNumber}',
+                            distanceLabel,
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 16,
@@ -122,7 +136,7 @@ class CompletionScreen extends StatelessWidget {
                 child: ElevatedButton(
                   onPressed: () {
                     Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (context) => const StartScreen()),
+                      MaterialPageRoute(builder: (context) => const HomeScreen()),
                       (route) => false,
                     );
                   },
@@ -136,7 +150,7 @@ class CompletionScreen extends StatelessWidget {
                     ),
                   ),
                   child: const Text(
-                    'NEW SESSION',
+                    'HOME',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,

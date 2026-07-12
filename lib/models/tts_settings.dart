@@ -7,6 +7,8 @@ class TtsSettings {
   final bool resumeAimpAfterPlayback;
   final bool touchToToggleAimp;
   final bool doubleTapToCompleteKm;
+  final bool buttonNavigationDelay;
+  final int delayAfterAudioMs;
 
   const TtsSettings({
     this.enabled = true,
@@ -17,6 +19,8 @@ class TtsSettings {
     this.resumeAimpAfterPlayback = false,
     this.touchToToggleAimp = false,
     this.doubleTapToCompleteKm = false,
+    this.buttonNavigationDelay = true,
+    this.delayAfterAudioMs = 1000,
   });
 
   Map<String, dynamic> toJson() => {
@@ -28,6 +32,8 @@ class TtsSettings {
     'resumeAimpAfterPlayback': resumeAimpAfterPlayback,
     'touchToToggleAimp': touchToToggleAimp,
     'doubleTapToCompleteKm': doubleTapToCompleteKm,
+    'buttonNavigationDelay': buttonNavigationDelay,
+    'delayAfterAudioMs': delayAfterAudioMs,
   };
 
   factory TtsSettings.fromJson(Map<String, dynamic> json) {
@@ -50,6 +56,8 @@ class TtsSettings {
       resumeAimpAfterPlayback: json['resumeAimpAfterPlayback'] as bool? ?? false,
       touchToToggleAimp: json['touchToToggleAimp'] as bool? ?? false,
       doubleTapToCompleteKm: json['doubleTapToCompleteKm'] as bool? ?? false,
+      buttonNavigationDelay: json['buttonNavigationDelay'] as bool? ?? true,
+      delayAfterAudioMs: (json['delayAfterAudioMs'] as num?)?.toInt() ?? 1000,
     );
   }
 
@@ -62,6 +70,8 @@ class TtsSettings {
     bool? resumeAimpAfterPlayback,
     bool? touchToToggleAimp,
     bool? doubleTapToCompleteKm,
+    bool? buttonNavigationDelay,
+    int? delayAfterAudioMs,
   }) => TtsSettings(
     enabled: enabled ?? this.enabled,
     speed: speed ?? this.speed,
@@ -71,5 +81,7 @@ class TtsSettings {
     resumeAimpAfterPlayback: resumeAimpAfterPlayback ?? this.resumeAimpAfterPlayback,
     touchToToggleAimp: touchToToggleAimp ?? this.touchToToggleAimp,
     doubleTapToCompleteKm: doubleTapToCompleteKm ?? this.doubleTapToCompleteKm,
+    buttonNavigationDelay: buttonNavigationDelay ?? this.buttonNavigationDelay,
+    delayAfterAudioMs: delayAfterAudioMs ?? this.delayAfterAudioMs,
   );
 }

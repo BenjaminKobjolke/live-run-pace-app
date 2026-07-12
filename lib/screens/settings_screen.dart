@@ -5,19 +5,19 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import '../models/tts_settings.dart';
 
-class TtsSettingsDialog extends StatefulWidget {
+class SettingsScreen extends StatefulWidget {
   final TtsSettings currentSettings;
 
-  const TtsSettingsDialog({
+  const SettingsScreen({
     super.key,
     required this.currentSettings,
   });
 
   @override
-  State<TtsSettingsDialog> createState() => _TtsSettingsDialogState();
+  State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _TtsSettingsDialogState extends State<TtsSettingsDialog> {
+class _SettingsScreenState extends State<SettingsScreen> {
   late bool _enabled;
   late double _speed;
   late double _volume;
@@ -26,6 +26,8 @@ class _TtsSettingsDialogState extends State<TtsSettingsDialog> {
   late bool _resumeAimpAfterPlayback;
   late bool _touchToToggleAimp;
   late bool _doubleTapToCompleteKm;
+  late bool _buttonNavigationDelay;
+  late int _delayAfterAudioMs;
 
   @override
   void initState() {
@@ -38,6 +40,8 @@ class _TtsSettingsDialogState extends State<TtsSettingsDialog> {
     _resumeAimpAfterPlayback = widget.currentSettings.resumeAimpAfterPlayback;
     _touchToToggleAimp = widget.currentSettings.touchToToggleAimp;
     _doubleTapToCompleteKm = widget.currentSettings.doubleTapToCompleteKm;
+    _buttonNavigationDelay = widget.currentSettings.buttonNavigationDelay;
+    _delayAfterAudioMs = widget.currentSettings.delayAfterAudioMs;
   }
 
   Future<void> _pickMp3File() async {
@@ -421,17 +425,41 @@ class _TtsSettingsDialogState extends State<TtsSettingsDialog> {
     );
   }
 
+  void _save() {
+    final newSettings = TtsSettings(
+      enabled: _enabled,
+      speed: _speed,
+      volume: _volume,
+      pauseOtherAudio: _pauseOtherAudio,
+      mp3FilePaths: _mp3FilePaths,
+      resumeAimpAfterPlayback: _resumeAimpAfterPlayback,
+      touchToToggleAimp: _touchToToggleAimp,
+      doubleTapToCompleteKm: _doubleTapToCompleteKm,
+      buttonNavigationDelay: _buttonNavigationDelay,
+      delayAfterAudioMs: _delayAfterAudioMs,
+    );
+    Navigator.of(context).pop(newSettings);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: const Color(0xFF333333),
-      title: const Text(
-        'TTS Settings',
-        style: TextStyle(color: Colors.white),
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: const Text('Settings'),
+        actions: [
+          TextButton(
+            onPressed: _save,
+            child: const Text('Save', style: TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
-      content: SingleChildScrollView(
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // TTS On/Off
             Row(
@@ -487,6 +515,28 @@ class _TtsSettingsDialogState extends State<TtsSettingsDialog> {
                   max: 2.0,
                   divisions: 15,
                   onChanged: _enabled ? (value) => setState(() => _volume = value) : null,
+                  activeColor: Colors.white,
+                  inactiveColor: Colors.white30,
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 20),
+
+            // Delay After Audio (MP3 tail-drain)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Delay after audio: $_delayAfterAudioMs ms',
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                ),
+                Slider(
+                  value: _delayAfterAudioMs.toDouble(),
+                  min: 0,
+                  max: 3000,
+                  divisions: 30,
+                  onChanged: _enabled ? (value) => setState(() => _delayAfterAudioMs = value.round()) : null,
                   activeColor: Colors.white,
                   inactiveColor: Colors.white30,
                 ),
@@ -575,6 +625,26 @@ class _TtsSettingsDialogState extends State<TtsSettingsDialog> {
 
             const SizedBox(height: 20),
 
+            // Delay Button Navigation
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Delay button navigation',
+                    style: TextStyle(color: Colors.white, fontSize: 16),
+                  ),
+                ),
+                Switch(
+                  value: _buttonNavigationDelay,
+                  onChanged: (value) => setState(() => _buttonNavigationDelay = value),
+                  activeColor: Colors.white,
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 20),
+
             // MP3 File Selection
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -603,9 +673,11 @@ class _TtsSettingsDialogState extends State<TtsSettingsDialog> {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Expanded(
+                        Flexible(
                           child: ListView.builder(
+                            shrinkWrap: true,
                             itemCount: _mp3FilePaths.length,
                             itemBuilder: (context, index) {
                               final filePath = _mp3FilePaths[index];
@@ -691,28 +763,6 @@ class _TtsSettingsDialogState extends State<TtsSettingsDialog> {
           ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
-        ),
-        TextButton(
-          onPressed: () {
-            final newSettings = TtsSettings(
-              enabled: _enabled,
-              speed: _speed,
-              volume: _volume,
-              pauseOtherAudio: _pauseOtherAudio,
-              mp3FilePaths: _mp3FilePaths,
-              resumeAimpAfterPlayback: _resumeAimpAfterPlayback,
-              touchToToggleAimp: _touchToToggleAimp,
-              doubleTapToCompleteKm: _doubleTapToCompleteKm,
-            );
-            Navigator.of(context).pop(newSettings);
-          },
-          child: const Text('Save', style: TextStyle(color: Colors.white)),
-        ),
-      ],
     );
   }
 }

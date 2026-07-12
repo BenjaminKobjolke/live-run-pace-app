@@ -65,6 +65,7 @@ class RunningSession {
   final List<KilometerTarget> targets;
   final int currentKm;
   final bool isCompleted;
+  final bool isAborted;
 
   const RunningSession({
     required this.id,
@@ -75,6 +76,7 @@ class RunningSession {
     required this.targets,
     this.currentKm = 1,
     this.isCompleted = false,
+    this.isAborted = false,
   });
 
   int get totalKilometers => distance.ceil();
@@ -82,6 +84,12 @@ class RunningSession {
   Duration get elapsedTime => DateTime.now().difference(startTime);
 
   Duration get targetTimeForCurrentKm {
+    if (isPartialLastKilometer) {
+      // For partial last kilometer, calculate proportional time
+      final previousKmTime = Duration(seconds: (targetPace.inSeconds * (currentKm - 1)).round());
+      final partialTime = Duration(seconds: (targetPace.inSeconds * lastSegmentDistance).round());
+      return previousKmTime + partialTime;
+    }
     return Duration(seconds: (targetPace.inSeconds * currentKm).round());
   }
 
@@ -92,6 +100,12 @@ class RunningSession {
   }
 
   Duration get nextTargetTime {
+    if (isPartialLastKilometer) {
+      // For partial last kilometer, calculate proportional time
+      final previousKmTime = Duration(seconds: (targetPace.inSeconds * (currentKm - 1)).round());
+      final partialTime = Duration(seconds: (targetPace.inSeconds * lastSegmentDistance).round());
+      return previousKmTime + partialTime;
+    }
     return Duration(seconds: (targetPace.inSeconds * currentKm).round());
   }
 
@@ -152,6 +166,31 @@ class RunningSession {
 
   bool get isLastKilometer => currentKm >= totalKilometers;
 
+  // Computed properties for partial last kilometer handling
+  double get lastSegmentDistance {
+    // If we're on the last segment, calculate actual distance
+    if (currentKm == totalKilometers) {
+      final fractionalPart = distance - (totalKilometers - 1);
+      return fractionalPart;
+    }
+    return 1.0; // Full kilometer for non-last segments
+  }
+
+  bool get isPartialLastKilometer {
+    return isLastKilometer && lastSegmentDistance < 1.0;
+  }
+
+  String get currentSegmentDistanceDisplay {
+    if (isPartialLastKilometer) {
+      final meters = (lastSegmentDistance * 1000).round();
+      if (meters < 1000) {
+        return '$meters m';
+      }
+      return '${lastSegmentDistance.toStringAsFixed(3)} km';
+    }
+    return '$currentKm km';
+  }
+
   String get currentPaceDisplay {
     if (currentKm <= 1) return '--:--';
 
@@ -187,6 +226,88 @@ class RunningSession {
     }
   }
 
+  // Additional computed properties for session history
+  Duration get totalTime {
+    if (!isCompleted) return elapsedTime;
+
+    // For completed sessions, calculate from completed targets
+    final completedTargets = targets.where((t) => t.completedAt != null).toList();
+    if (completedTargets.isEmpty) return Duration.zero;
+
+    final startTime = completedTargets.first.completedAt!.subtract(completedTargets.first.actualTime ?? Duration.zero);
+    final endTime = completedTargets.last.completedAt!;
+    return endTime.difference(startTime);
+  }
+
+  Duration get averagePace {
+    final completedTargets = targets.where((t) => t.actualTime != null).toList();
+    if (completedTargets.isEmpty) return Duration.zero;
+
+    final totalTime = completedTargets.fold<Duration>(
+      Duration.zero,
+      (sum, target) => sum + (target.actualTime ?? Duration.zero),
+    );
+
+    return Duration(seconds: (totalTime.inSeconds / completedTargets.length).round());
+  }
+
+  String get averagePaceDisplay {
+    final pace = averagePace;
+    if (pace == Duration.zero) return '--:--';
+
+    final minutes = pace.inMinutes;
+    final seconds = pace.inSeconds % 60;
+    return '$minutes:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  List<Duration> get lapTimes {
+    return targets
+        .where((t) => t.actualTime != null)
+        .map((t) => t.actualTime!)
+        .toList();
+  }
+
+  Duration? get bestKmTime {
+    final times = lapTimes;
+    if (times.isEmpty) return null;
+    return times.reduce((a, b) => a.inSeconds < b.inSeconds ? a : b);
+  }
+
+  Duration? get worstKmTime {
+    final times = lapTimes;
+    if (times.isEmpty) return null;
+    return times.reduce((a, b) => a.inSeconds > b.inSeconds ? a : b);
+  }
+
+  // Computed properties for aborted sessions
+  String get statusDisplay {
+    if (isAborted) return 'Aborted';
+    if (isCompleted) return 'Completed';
+    return 'In Progress';
+  }
+
+  int get completedKilometers {
+    return targets.where((t) => t.actualTime != null).length;
+  }
+
+  double get distanceCompleted {
+    return completedKilometers.toDouble();
+  }
+
+  String get completionSummary {
+    if (isAborted) {
+      if (completedKilometers == 0) {
+        return 'Aborted before completing any kilometers';
+      } else {
+        return 'Aborted after $completedKilometers of ${distance.toStringAsFixed(1)} km';
+      }
+    }
+    if (isCompleted) {
+      return 'Completed ${distance.toStringAsFixed(1)} km';
+    }
+    return 'In progress: $completedKilometers of ${distance.toStringAsFixed(1)} km';
+  }
+
   Map<String, dynamic> toJson() => {
     'id': id,
     'distance': distance,
@@ -196,6 +317,7 @@ class RunningSession {
     'targets': targets.map((t) => t.toJson()).toList(),
     'currentKm': currentKm,
     'isCompleted': isCompleted,
+    'isAborted': isAborted,
   };
 
   factory RunningSession.fromJson(Map<String, dynamic> json) => RunningSession(
@@ -209,6 +331,7 @@ class RunningSession {
         .toList(),
     currentKm: json['currentKm'] as int? ?? 1,
     isCompleted: json['isCompleted'] as bool? ?? false,
+    isAborted: json['isAborted'] as bool? ?? false,
   );
 
   RunningSession copyWith({
@@ -220,6 +343,7 @@ class RunningSession {
     List<KilometerTarget>? targets,
     int? currentKm,
     bool? isCompleted,
+    bool? isAborted,
   }) => RunningSession(
     id: id ?? this.id,
     distance: distance ?? this.distance,
@@ -229,5 +353,6 @@ class RunningSession {
     targets: targets ?? this.targets,
     currentKm: currentKm ?? this.currentKm,
     isCompleted: isCompleted ?? this.isCompleted,
+    isAborted: isAborted ?? this.isAborted,
   );
 }

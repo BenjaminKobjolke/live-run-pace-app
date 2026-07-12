@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../services/storage_service.dart';
 
 class DistanceDialog extends StatefulWidget {
   final double currentDistance;
@@ -16,11 +17,28 @@ class DistanceDialog extends StatefulWidget {
 class _DistanceDialogState extends State<DistanceDialog> {
   late TextEditingController _controller;
   String _unit = 'km';
+  List<double> _suggestions = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _controller = TextEditingController(text: widget.currentDistance.toStringAsFixed(3));
+    _loadSuggestions();
+  }
+
+  Future<void> _loadSuggestions() async {
+    try {
+      final suggestions = await StorageService.instance.getDistanceSuggestions(limit: 6);
+      setState(() {
+        _suggestions = suggestions;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -35,6 +53,13 @@ class _DistanceDialogState extends State<DistanceDialog> {
     if (_unit == 'km') return value;
     if (_unit == 'm') return value / 1000;
     return value / 0.621371; // miles to km
+  }
+
+  void _selectSuggestion(double distance) {
+    setState(() {
+      _unit = 'km';
+      _controller.text = distance.toStringAsFixed(3);
+    });
   }
 
   @override
@@ -57,6 +82,43 @@ class _DistanceDialogState extends State<DistanceDialog> {
             ),
 
             const SizedBox(height: 20),
+
+            // Suggestions
+            if (!_isLoading && _suggestions.isNotEmpty) ...[
+              const Text(
+                'Frequently Used',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _suggestions.map((distance) {
+                  return GestureDetector(
+                    onTap: () => _selectSuggestion(distance),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white10,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.white24),
+                      ),
+                      child: Text(
+                        '${distance.toStringAsFixed(3)} km',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 20),
+            ],
 
             // Unit selector
             Row(

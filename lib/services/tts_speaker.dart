@@ -130,10 +130,12 @@ class TtsSpeaker {
 
       // Wait for MP3 completion with proper timeout handling
       final completer = Completer<void>();
+      bool naturalCompletion = false;
       late StreamSubscription subscription;
 
       subscription = _audioPlayer!.onPlayerComplete.listen((_) {
         print('MP3 playback completed via onPlayerComplete');
+        naturalCompletion = true;
         subscription.cancel();
         completer.complete();
       });
@@ -162,13 +164,23 @@ class TtsSpeaker {
         errorSubscription.cancel();
       }
 
-      // Stop the audio player but don't release it to avoid audio system disruption
-      print('Stopping MP3 player...');
-      await _audioPlayer!.stop();
-
-      // Small delay to ensure stop is complete
-      await Future.delayed(const Duration(milliseconds: 200));
-      print('MP3 player stopped');
+      if (naturalCompletion) {
+        // onPlayerComplete fires at end-of-data, but ~1-2s of decoded audio may still
+        // be queued in the hardware buffer. Drain it BEFORE stopping so the tail plays.
+        // Delay is user-configurable (Settings -> "Delay after audio").
+        if (_settings.delayAfterAudioMs > 0) {
+          print('Draining audio tail for ${_settings.delayAfterAudioMs} ms...');
+          await Future.delayed(Duration(milliseconds: _settings.delayAfterAudioMs));
+        }
+        // ReleaseMode.release already freed the source on completion; no stop() needed.
+        print('MP3 finished naturally');
+      } else {
+        // Timeout / spurious stop: tear down the stuck player.
+        print('Stopping MP3 player (non-natural exit)...');
+        await _audioPlayer!.stop();
+        await Future.delayed(const Duration(milliseconds: 200));
+        print('MP3 player stopped');
+      }
 
     } catch (e) {
       print('MP3 playback error: $e');

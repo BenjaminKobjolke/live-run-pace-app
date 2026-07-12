@@ -4,8 +4,8 @@ import '../models/tts_settings.dart';
 import '../services/storage_service.dart';
 import '../widgets/distance_dialog.dart';
 import '../widgets/pace_dialog.dart';
-import '../widgets/tts_settings_dialog.dart';
 import 'main_screen.dart';
+import 'settings_screen.dart';
 
 class StartScreen extends StatefulWidget {
   const StartScreen({super.key});
@@ -44,9 +44,10 @@ class _StartScreenState extends State<StartScreen> {
   }
 
   Future<void> _showTtsSettingsDialog() async {
-    final newSettings = await showDialog<TtsSettings>(
-      context: context,
-      builder: (context) => TtsSettingsDialog(currentSettings: _ttsSettings),
+    final newSettings = await Navigator.of(context).push<TtsSettings>(
+      MaterialPageRoute(
+        builder: (context) => SettingsScreen(currentSettings: _ttsSettings),
+      ),
     );
 
     if (newSettings != null) {

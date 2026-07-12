@@ -9,6 +9,7 @@ import '../services/storage_service.dart';
 import '../services/tts_speaker.dart';
 import 'start_screen.dart';
 import 'completion_screen.dart';
+import 'home_screen.dart';
 
 class MainScreen extends StatefulWidget {
   final AppSettings settings;
@@ -30,7 +31,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   late RunningSession _session;
   Timer? _timer;
   Timer? _saveTimer;
+  Timer? _buttonDelayTimer;
   bool _showFlash = false;
+  bool _buttonsEnabled = true;
   TtsSpeaker? _ttsSpeaker;
   bool _isAppInBackground = false;
   static const MethodChannel _aimpChannel = MethodChannel('com.yourapp.live_run_pace/aimp');
@@ -57,6 +60,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   void _initializeSession() {
     if (widget.existingSession != null) {
       _session = widget.existingSession!;
+      // Existing session - buttons are enabled immediately
     } else {
       final targets = List.generate(
         widget.settings.distance.ceil(),
@@ -73,6 +77,10 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       );
 
       _saveSession();
+
+      // New session - record distance to history and disable buttons temporarily
+      _recordDistanceToHistory();
+      _disableButtonsTemporarily();
     }
   }
 
@@ -123,6 +131,33 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     await StorageService.instance.saveActiveSession(_session);
   }
 
+  void _disableButtonsTemporarily() {
+    if (!widget.ttsSettings.buttonNavigationDelay) {
+      return; // Feature disabled, keep buttons enabled
+    }
+
+    setState(() {
+      _buttonsEnabled = false;
+    });
+
+    _buttonDelayTimer?.cancel();
+    _buttonDelayTimer = Timer(const Duration(seconds: 1), () {
+      if (mounted) {
+        setState(() {
+          _buttonsEnabled = true;
+        });
+      }
+    });
+  }
+
+  Future<void> _recordDistanceToHistory() async {
+    try {
+      await StorageService.instance.addDistanceToHistory(_session.distance);
+    } catch (e) {
+      print('Error recording distance to history: $e');
+    }
+  }
+
   Future<void> _goToNextKm() async {
     if (_session.isLastKilometer) {
       _showFinishConfirmation();
@@ -146,6 +181,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
     await _triggerFeedback();
     _saveSession();
+    _disableButtonsTemporarily();
   }
 
   Future<void> _triggerFeedback() async {
@@ -188,7 +224,13 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         final absTime = timeLeft.abs();
         final minutes = absTime.inMinutes;
         final seconds = absTime.inSeconds % 60;
-        announcement = "Final kilometer! You have $minutes minutes and $seconds seconds left to finish.";
+
+        if (_session.isPartialLastKilometer) {
+          final meters = (_session.lastSegmentDistance * 1000).round();
+          announcement = "Final $meters meters! You have $minutes minutes and $seconds seconds left to finish.";
+        } else {
+          announcement = "Final kilometer! You have $minutes minutes and $seconds seconds left to finish.";
+        }
       } else {
         final paceStatus = _session.paceStatus;
         final timeLeft = _session.timeLeftForCurrentKm;
@@ -196,17 +238,39 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         final minutes = absTime.inMinutes;
         final seconds = absTime.inSeconds % 60;
 
+        // Check if the NEXT kilometer will be a partial one
+        final isNextPartial = (nextTargetKm == _session.totalKilometers) &&
+                              (_session.distance - (nextTargetKm - 1)) < 1.0;
+        String nextTargetDescription;
+
+        if (isNextPartial) {
+          final nextSegmentDistance = _session.distance - (nextTargetKm - 1);
+          final meters = (nextSegmentDistance * 1000).round();
+          nextTargetDescription = "the final $meters meters";
+        } else {
+          nextTargetDescription = "kilometer $nextTargetKm";
+        }
+
         switch (paceStatus) {
           case PaceStatus.onSchedule:
-            announcement = "Kilometer $justCompletedKm completed in time! The next target is kilometer $nextTargetKm. You have $minutes minutes and $seconds seconds left to reach the next target.";
+            announcement = "Kilometer $justCompletedKm completed in time! The next target is $nextTargetDescription. You have $minutes minutes and $seconds seconds left to reach the next target.";
             break;
           case PaceStatus.behindSchedule:
             final maxPaceMinutes = _session.maxPace.inMinutes;
             final maxPaceSeconds = _session.maxPace.inSeconds % 60;
-            announcement = "Kilometer $justCompletedKm completed. You're behind schedule. Run the next kilometer in $maxPaceMinutes minutes and $maxPaceSeconds seconds to catch up.";
+            if (isNextPartial) {
+              // For partial segments, adjust the catch-up time proportionally
+              final nextSegmentDistance = _session.distance - (nextTargetKm - 1);
+              final adjustedMaxPaceSeconds = (_session.maxPace.inSeconds * nextSegmentDistance).round();
+              final adjMinutes = adjustedMaxPaceSeconds ~/ 60;
+              final adjSeconds = adjustedMaxPaceSeconds % 60;
+              announcement = "Kilometer $justCompletedKm completed. You're behind schedule. Run $nextTargetDescription in $adjMinutes minutes and $adjSeconds seconds to catch up.";
+            } else {
+              announcement = "Kilometer $justCompletedKm completed. You're behind schedule. Run the next kilometer in $maxPaceMinutes minutes and $maxPaceSeconds seconds to catch up.";
+            }
             break;
           case PaceStatus.aheadOfSchedule:
-            announcement = "Kilometer $justCompletedKm completed. Slow down! You have $minutes minutes and $seconds seconds left to reach the next target!";
+            announcement = "Kilometer $justCompletedKm completed. Slow down! You have $minutes minutes and $seconds seconds left to reach $nextTargetDescription!";
             break;
         }
       }
@@ -234,6 +298,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       });
 
       _saveSession();
+      _disableButtonsTemporarily();
     }
   }
 
@@ -321,10 +386,16 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     );
   }
 
-  void _abortSession() {
-    StorageService.instance.clearActiveSession();
+  void _abortSession() async {
+    final abortedSession = _session.copyWith(
+      isAborted: true,
+    );
+
+    await StorageService.instance.saveSessionToHistory(abortedSession);
+    await StorageService.instance.clearActiveSession();
+
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (context) => const StartScreen()),
+      MaterialPageRoute(builder: (context) => const HomeScreen()),
     );
   }
 
@@ -343,6 +414,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _stopTimers();
+    _buttonDelayTimer?.cancel();
     _cleanupTtsSpeaker();
     super.dispose();
   }
@@ -405,14 +477,14 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                   Expanded(
                     child: GestureDetector(
                       onTap: widget.ttsSettings.touchToToggleAimp ? _triggerAimpPlay : null,
-                      onDoubleTap: widget.ttsSettings.doubleTapToCompleteKm ? _goToNextKm : null,
+                      onDoubleTap: (widget.ttsSettings.doubleTapToCompleteKm && _buttonsEnabled) ? _goToNextKm : null,
                       behavior: HitTestBehavior.opaque,
                       child: Column(
                         children: [
                           const SizedBox(height: 8),
 
                           Text(
-                            '${_session.currentKm} km',
+                            _session.currentSegmentDistanceDisplay,
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 32,
@@ -520,39 +592,50 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                       Expanded(
                         flex: 1,
                         child: ElevatedButton(
-                          onPressed: _session.currentKm > 1 ? _goToPreviousKm : null,
+                          onPressed: (_buttonsEnabled && _session.currentKm > 1) ? _goToPreviousKm : null,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.transparent,
-                            foregroundColor: Colors.white,
-                            side: const BorderSide(color: Colors.white, width: 2),
+                            foregroundColor: _buttonsEnabled ? Colors.white : Colors.white30,
+                            side: BorderSide(
+                              color: _buttonsEnabled ? Colors.white : Colors.white30,
+                              width: 2,
+                            ),
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(4),
                             ),
                           ),
-                          child: const Icon(Icons.arrow_back, size: 20),
+                          child: Icon(
+                            Icons.arrow_back,
+                            size: 20,
+                            color: _buttonsEnabled ? Colors.white : Colors.white30,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         flex: 3,
                         child: ElevatedButton(
-                          onPressed: _goToNextKm,
+                          onPressed: _buttonsEnabled ? _goToNextKm : null,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.transparent,
-                            foregroundColor: Colors.white,
-                            side: const BorderSide(color: Colors.white, width: 2),
+                            foregroundColor: _buttonsEnabled ? Colors.white : Colors.white30,
+                            side: BorderSide(
+                              color: _buttonsEnabled ? Colors.white : Colors.white30,
+                              width: 2,
+                            ),
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(4),
                             ),
                           ),
-                          child: const Text(
-                            'GOT IT!',
+                          child: Text(
+                            _session.isLastKilometer ? 'FINISH!' : 'GOT IT!',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                               letterSpacing: 1,
+                              color: _buttonsEnabled ? Colors.white : Colors.white30,
                             ),
                           ),
                         ),
