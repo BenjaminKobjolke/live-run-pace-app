@@ -2,6 +2,19 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Code Analysis
+
+After implementing new features or making significant changes, run the code analysis:
+
+```bash
+powershell -Command "cd 'D:\GIT\BenjaminKobjolke\live_run_pace_app'; cmd /c '.\tools\analyze_code.bat'"
+```
+
+Results are written to `code_analysis_results/` as **per-rule CSV files** (e.g.
+`flutter_analyze.csv`, `line_count_report.csv`, `duplicate_code.csv`) — there is
+no `.md` report, and a missing CSV means that rule found nothing. Fix any
+reported issues before committing.
+
 ## Project Overview
 
 Live Run Pace App is a Flutter application designed for runners to track their pace and kilometer targets during runs. The app is optimized for small screen Android devices (240x432 resolution) and provides real-time pace feedback with multi-modal alerts (visual, haptic, audio).

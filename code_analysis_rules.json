@@ -1,0 +1,137 @@
+{
+  "log_level": "all",
+  "max_lines_per_file": {
+    "enabled": true,
+    "warning": 300,
+    "error": 500
+  },
+  "pmd_duplicates": {
+    "enabled": true,
+    "minimum_tokens": 100,
+    "exclude_patterns": {
+      "dart": ["*.g.dart", "*.freezed.dart"]
+    }
+  },
+  "pmd_similar_code": {
+    "enabled": false,
+    "minimum_tokens": 100,
+    "ignore_identifiers": true,
+    "ignore_literals": true,
+    "ignore_annotations": false,
+    "exclude_patterns": {
+      "dart": ["*.g.dart", "*.freezed.dart"]
+    }
+  },
+  "dart_analyze": {
+    "enabled": true
+  },
+  "dart_code_linter": {
+    "enabled": true,
+    "auto_install": false,
+    "analyze_path": "lib",
+    "keep_report": false,
+    "metrics": {
+      "cyclomatic-complexity": {
+        "warning": 10,
+        "error": 15
+      },
+      "number-of-methods": {
+        "warning": 10,
+        "error": 20
+      },
+      "technical-debt": {
+        "warning": 10,
+        "error": 50
+      },
+      "maintainability-index": {
+        "warning": 40,
+        "error": 20
+      },
+      "maximum-nesting-level": {
+        "warning": 3,
+        "error": 5
+      },
+      "halstead-volume": {
+        "warning": 800,
+        "error": 1200
+      }
+    }
+  },
+  "flutter_analyze": {
+    "enabled": false,
+    "exclude_patterns": ["*.g.dart", "*.freezed.dart"]
+  },
+  "dart_unused_files": {
+    "enabled": true,
+    "analyze_path": "lib",
+    "entry_points": ["lib/main.dart"],
+    "exclude_patterns": ["*.g.dart", "*.freezed.dart"],
+    "include_test_imports": false
+  },
+  "dart_unused_dependencies": {
+    "enabled": true,
+    "check_dev_dependencies": true,
+    "severity": "warning",
+    "ignore_packages": ["flutter", "flutter_localizations", "flutter_test", "flutter_lints", "dart_code_linter", "build_runner", "json_serializable", "freezed", "freezed_annotation"]
+  },
+  "dart_import_rules": {
+    "enabled": true,
+    "analyze_path": "lib",
+    "exclude_patterns": ["*.g.dart", "*.freezed.dart"],
+    "forbidden_imports": [
+      {
+        "from": "domain/**",
+        "cannot_import": ["presentation/**", "data/**", "package:flutter/**"],
+        "severity": "error",
+        "message": "Domain layer must not depend on presentation or data layers"
+      },
+      {
+        "from": "data/**",
+        "cannot_import": ["presentation/**"],
+        "severity": "warning",
+        "message": "Data layer should not depend on presentation layer"
+      }
+    ]
+  },
+  "dart_unused_code": {
+    "enabled": true,
+    "analyze_path": "lib",
+    "exclude_patterns": ["*.g.dart", "*.freezed.dart"],
+    "ignore_names": ["main", "build"],
+    "scan_test_references": true,
+    "severity": "warning"
+  },
+  "dart_missing_dispose": {
+    "enabled": true,
+    "analyze_path": "lib",
+    "exclude_patterns": ["*.g.dart", "*.freezed.dart"],
+    "severity": "warning",
+    "disposable_types": {
+      "AnimationController": "dispose",
+      "TextEditingController": "dispose",
+      "ScrollController": "dispose",
+      "TabController": "dispose",
+      "PageController": "dispose",
+      "FocusNode": "dispose",
+      "StreamSubscription": "cancel",
+      "StreamController": "close",
+      "Timer": "cancel"
+    },
+    "custom_disposable_types": {}
+  },
+  "dart_test_coverage": {
+    "enabled": false,
+    "run_tests": true,
+    "lcov_path": "coverage/lcov.info",
+    "test_timeout": 600,
+    "overall_coverage": {
+      "warning": 60,
+      "error": 40
+    },
+    "per_file_coverage": {
+      "warning": 50,
+      "error": 20
+    },
+    "exclude_patterns": ["*.g.dart", "*.freezed.dart"]
+  }
+}
