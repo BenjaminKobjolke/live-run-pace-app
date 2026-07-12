@@ -3,6 +3,18 @@
 Full-screen settings page. Configures TTS, audio behavior, gestures, and post-TTS
 MP3 playback.
 
+The controls are split across **three swipeable tabs** (`TabBar` + `TabBarView`
+under a `DefaultTabController` in `settings_screen.dart`) — swipe left/right or tap
+a tab:
+
+| Tab | Contents |
+|-----|----------|
+| **TTS** | TTS Enabled, Speed, Volume, Delay after audio, Pause other apps audio, Resume AIMP after playback |
+| **Gestures** | Touch to toggle AIMP, Double tap to complete km, Delay button navigation |
+| **MP3** | The MP3 file list (with per-file preview playback) + Add Files / Add Folder |
+
+The single **Save** action lives in the AppBar and applies across all tabs.
+
 ## Files
 
 | File | Role |
@@ -10,7 +22,8 @@ MP3 playback.
 | `lib/screens/settings_screen.dart` | `SettingsScreen` — the full-screen UI (thin: state + result handling). |
 | `lib/models/tts_settings.dart` | `TtsSettings` — immutable data model + JSON (de)serialization. |
 | `lib/services/mp3_picker_service.dart` | `Mp3PickerService` — UI-free file/folder picking, permissions, and recursive scan; returns a typed `Mp3PickResult`. |
-| `lib/widgets/mp3_file_list.dart` | `Mp3FileList` — the selected-files list (remove / Clear All). |
+| `lib/widgets/mp3_settings_tab.dart` | `Mp3SettingsTab` — the MP3 tab body (header, list, Add Files/Folder buttons); picking injected via callbacks. |
+| `lib/widgets/mp3_file_list.dart` | `Mp3FileList` — the selected-files list (preview ▶ / remove / Clear All); owns a preview `AudioPlayer`. |
 | `lib/widgets/setting_controls.dart` | `SettingSwitch` / `SettingSlider` — reusable labeled rows. |
 | `lib/widgets/confirm_dialog.dart`, `info_dialog.dart` | Shared `showConfirmDialog` / `showInfoDialog` helpers. |
 | `lib/services/storage_service.dart` | Persists to `SharedPreferences` under key `tts_settings`. |
@@ -67,6 +80,10 @@ the screen thin and makes the picker testable.
 - **Add Folder** — picks a directory, recursively scans for `mp3`/`wav`/`m4a`.
 - Duplicates are filtered; each file has an × to remove; **Clear All** appears
   when more than one file is present (`Mp3FileList`).
+- Each row has a ▶ **preview** button — tap to play the file for testing, tap ■ to
+  stop (switching to another file stops the previous one). `Mp3FileList` owns a
+  single preview `AudioPlayer`, disposed with the widget. This is independent of the
+  runtime TTS playback in `tts_speaker.dart`.
 - **Permissions:** Android 13+ (SDK 33+) requests `Permission.audio`; older uses
   `Permission.storage`.
 - **Result → UI:** `Mp3PickStatus` values — `added`, `cancelled`,

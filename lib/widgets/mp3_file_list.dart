@@ -1,12 +1,13 @@
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 
-/// Scrollable list of selected MP3 file paths with per-item remove and a
-/// Clear All action.
-class Mp3FileList extends StatelessWidget {
+/// Scrollable list of selected MP3 file paths with per-item preview playback,
+/// remove, and a Clear All action.
+class Mp3FileList extends StatefulWidget {
   /// Absolute paths of the selected audio files.
   final List<String> filePaths;
 
-  /// Whether remove/clear actions are enabled.
+  /// Whether preview/remove/clear actions are enabled.
   final bool enabled;
 
   /// Called with the path to remove when its X is tapped.
@@ -24,6 +25,44 @@ class Mp3FileList extends StatelessWidget {
   });
 
   @override
+  State<Mp3FileList> createState() => _Mp3FileListState();
+}
+
+class _Mp3FileListState extends State<Mp3FileList> {
+  /// Single preview player shared by every row; only one file previews at a time.
+  final AudioPlayer _player = AudioPlayer();
+
+  /// Path currently previewing, or null when stopped.
+  String? _playingPath;
+
+  @override
+  void initState() {
+    super.initState();
+    _player.onPlayerComplete.listen((_) {
+      if (mounted) setState(() => _playingPath = null);
+    });
+  }
+
+  @override
+  void dispose() {
+    _player.dispose();
+    super.dispose();
+  }
+
+  /// Toggles preview for [filePath]: stops if it is already playing, otherwise
+  /// stops any prior preview and starts this one.
+  Future<void> _togglePreview(String filePath) async {
+    if (_playingPath == filePath) {
+      await _player.stop();
+      if (mounted) setState(() => _playingPath = null);
+      return;
+    }
+    await _player.stop();
+    await _player.play(DeviceFileSource(filePath));
+    if (mounted) setState(() => _playingPath = filePath);
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
@@ -38,15 +77,25 @@ class Mp3FileList extends StatelessWidget {
           Flexible(
             child: ListView.builder(
               shrinkWrap: true,
-              itemCount: filePaths.length,
+              itemCount: widget.filePaths.length,
               itemBuilder: (context, index) {
-                final filePath = filePaths[index];
+                final filePath = widget.filePaths[index];
                 final fileName = filePath.split('/').last;
+                final isPlaying = _playingPath == filePath;
                 return Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   child: Row(
                     children: [
-                      const Icon(Icons.music_note, color: Colors.white70, size: 16),
+                      IconButton(
+                        onPressed: widget.enabled ? () => _togglePreview(filePath) : null,
+                        icon: Icon(
+                          isPlaying ? Icons.stop : Icons.play_arrow,
+                          color: Colors.white70,
+                          size: 18,
+                        ),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -57,7 +106,7 @@ class Mp3FileList extends StatelessWidget {
                         ),
                       ),
                       IconButton(
-                        onPressed: enabled ? () => onRemove(filePath) : null,
+                        onPressed: widget.enabled ? () => widget.onRemove(filePath) : null,
                         icon: const Icon(Icons.close, color: Colors.white, size: 16),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
@@ -68,7 +117,7 @@ class Mp3FileList extends StatelessWidget {
               },
             ),
           ),
-          if (filePaths.length > 1)
+          if (widget.filePaths.length > 1)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(4),
@@ -76,7 +125,7 @@ class Mp3FileList extends StatelessWidget {
                 border: Border(top: BorderSide(color: Colors.white30)),
               ),
               child: TextButton(
-                onPressed: enabled ? onClearAll : null,
+                onPressed: widget.enabled ? widget.onClearAll : null,
                 style: TextButton.styleFrom(
                   foregroundColor: Colors.red,
                   padding: const EdgeInsets.symmetric(vertical: 4),

@@ -4,7 +4,7 @@ import '../models/tts_settings.dart';
 import '../services/mp3_picker_service.dart';
 import '../widgets/confirm_dialog.dart';
 import '../widgets/info_dialog.dart';
-import '../widgets/mp3_file_list.dart';
+import '../widgets/mp3_settings_tab.dart';
 import '../widgets/setting_controls.dart';
 
 /// Settings screen for TTS, audio, and gesture options.
@@ -133,140 +133,137 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
         backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        title: const Text('Settings'),
-        actions: [
-          TextButton(
-            onPressed: _save,
-            child: const Text('Save', style: TextStyle(color: Colors.white)),
+        appBar: AppBar(
+          backgroundColor: Colors.black,
+          foregroundColor: Colors.white,
+          title: const Text('Settings'),
+          actions: [
+            TextButton(
+              onPressed: _save,
+              child: const Text('Save', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+          bottom: const TabBar(
+            indicatorColor: Colors.white,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white54,
+            tabs: [
+              Tab(text: 'TTS'),
+              Tab(text: 'Gestures'),
+              Tab(text: 'MP3'),
+            ],
           ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        ),
+        body: TabBarView(
           children: [
-            SettingSwitch(
-              label: 'TTS Enabled',
-              value: _enabled,
-              onChanged: (v) => setState(() => _enabled = v),
-            ),
-            const SizedBox(height: 20),
-            SettingSlider(
-              label: 'Speed: ${_speed.toStringAsFixed(1)}',
-              value: _speed,
-              min: 0.1,
-              max: 1.0,
-              divisions: 9,
-              onChanged: _enabled ? (v) => setState(() => _speed = v) : null,
-            ),
-            const SizedBox(height: 20),
-            SettingSlider(
-              label: 'Volume: ${_volume.toStringAsFixed(1)}',
-              value: _volume,
-              min: 0.5,
-              max: 2.0,
-              divisions: 15,
-              onChanged: _enabled ? (v) => setState(() => _volume = v) : null,
-            ),
-            const SizedBox(height: 20),
-            SettingSlider(
-              label: 'Delay after audio: $_delayAfterAudioMs ms',
-              value: _delayAfterAudioMs.toDouble(),
-              min: 0,
-              max: 3000,
-              divisions: 30,
-              onChanged: _enabled ? (v) => setState(() => _delayAfterAudioMs = v.round()) : null,
-            ),
-            const SizedBox(height: 20),
-            SettingSwitch(
-              label: 'Pause other apps audio',
-              value: _pauseOtherAudio,
-              onChanged: _enabled ? (v) => setState(() => _pauseOtherAudio = v) : null,
-            ),
-            const SizedBox(height: 20),
-            SettingSwitch(
-              label: 'Resume AIMP after playback',
-              value: _resumeAimpAfterPlayback,
-              onChanged: _pauseOtherAudio ? (v) => setState(() => _resumeAimpAfterPlayback = v) : null,
-            ),
-            const SizedBox(height: 20),
-            SettingSwitch(
-              label: 'Touch main screen to play/pause AIMP',
-              value: _touchToToggleAimp,
-              onChanged: (v) => setState(() => _touchToToggleAimp = v),
-            ),
-            const SizedBox(height: 20),
-            SettingSwitch(
-              label: 'Double tap main screen to complete kilometer',
-              value: _doubleTapToCompleteKm,
-              onChanged: (v) => setState(() => _doubleTapToCompleteKm = v),
-            ),
-            const SizedBox(height: 20),
-            SettingSwitch(
-              label: 'Delay button navigation',
-              value: _buttonNavigationDelay,
-              onChanged: (v) => setState(() => _buttonNavigationDelay = v),
-            ),
-            const SizedBox(height: 20),
-            _buildMp3Section(),
+            _buildTtsTab(),
+            _buildGesturesTab(),
+            _buildMp3Tab(),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildMp3Section() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text('MP3 Sound After TTS', style: TextStyle(color: Colors.white, fontSize: 16)),
-            if (_mp3FilePaths.isNotEmpty)
-              Text(
-                '${_mp3FilePaths.length} file${_mp3FilePaths.length == 1 ? '' : 's'}',
-                style: const TextStyle(color: Colors.white70, fontSize: 12),
-              ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        if (_mp3FilePaths.isNotEmpty) ...[
-          Mp3FileList(
-            filePaths: _mp3FilePaths,
-            enabled: _enabled,
-            onRemove: (path) => setState(() => _mp3FilePaths.remove(path)),
-            onClearAll: () => setState(() => _mp3FilePaths.clear()),
+  Widget _buildTtsTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SettingSwitch(
+            label: 'TTS Enabled',
+            value: _enabled,
+            onChanged: (v) => setState(() => _enabled = v),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 20),
+          SettingSlider(
+            label: 'Speed: ${_speed.toStringAsFixed(1)}',
+            value: _speed,
+            min: 0.1,
+            max: 1.0,
+            divisions: 9,
+            onChanged: _enabled ? (v) => setState(() => _speed = v) : null,
+          ),
+          const SizedBox(height: 20),
+          SettingSlider(
+            label: 'Volume: ${_volume.toStringAsFixed(1)}',
+            value: _volume,
+            min: 0.5,
+            max: 2.0,
+            divisions: 15,
+            onChanged: _enabled ? (v) => setState(() => _volume = v) : null,
+          ),
+          const SizedBox(height: 20),
+          SettingSlider(
+            label: 'Delay after audio: $_delayAfterAudioMs ms',
+            value: _delayAfterAudioMs.toDouble(),
+            min: 0,
+            max: 3000,
+            divisions: 30,
+            onChanged: _enabled ? (v) => setState(() => _delayAfterAudioMs = v.round()) : null,
+          ),
+          const SizedBox(height: 20),
+          SettingSwitch(
+            label: 'Pause other apps audio',
+            value: _pauseOtherAudio,
+            onChanged: _enabled ? (v) => setState(() => _pauseOtherAudio = v) : null,
+          ),
+          const SizedBox(height: 20),
+          SettingSwitch(
+            label: 'Resume AIMP after playback',
+            value: _resumeAimpAfterPlayback,
+            onChanged: _pauseOtherAudio ? (v) => setState(() => _resumeAimpAfterPlayback = v) : null,
+          ),
         ],
-        Row(
-          children: [
-            Expanded(child: _addButton('Add Files', _enabled ? _pickFiles : null)),
-            const SizedBox(width: 8),
-            Expanded(child: _addButton('Add Folder', _enabled ? _pickFolder : null)),
-          ],
-        ),
-      ],
+      ),
     );
   }
 
-  Widget _addButton(String label, VoidCallback? onPressed) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.transparent,
-        foregroundColor: Colors.white,
-        side: const BorderSide(color: Colors.white, width: 1),
-        padding: const EdgeInsets.symmetric(vertical: 8),
+  Widget _buildGesturesTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SettingSwitch(
+            label: 'Touch main screen to play/pause AIMP',
+            value: _touchToToggleAimp,
+            onChanged: (v) => setState(() => _touchToToggleAimp = v),
+          ),
+          const SizedBox(height: 20),
+          SettingSwitch(
+            label: 'Double tap main screen to complete kilometer',
+            value: _doubleTapToCompleteKm,
+            onChanged: (v) => setState(() => _doubleTapToCompleteKm = v),
+          ),
+          const SizedBox(height: 20),
+          SettingSwitch(
+            label: 'Delay button navigation',
+            value: _buttonNavigationDelay,
+            onChanged: (v) => setState(() => _buttonNavigationDelay = v),
+          ),
+        ],
       ),
-      child: Text(label),
     );
   }
+
+  Widget _buildMp3Tab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Mp3SettingsTab(
+        filePaths: _mp3FilePaths,
+        enabled: _enabled,
+        onRemove: (path) => setState(() => _mp3FilePaths.remove(path)),
+        onClearAll: () => setState(() => _mp3FilePaths.clear()),
+        onPickFiles: _pickFiles,
+        onPickFolder: _pickFolder,
+      ),
+    );
+  }
+
 }
