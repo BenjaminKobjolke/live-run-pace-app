@@ -2,6 +2,11 @@
 tools/ftp_sync.ini
 tools/upload/
 
+# Code analysis tooling
+tools/analyze_code_config.bat
+code_analysis_results/
+dart_lsp.json
+
 # Miscellaneous
 *.class
 *.lock
