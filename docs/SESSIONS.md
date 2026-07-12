@@ -31,6 +31,13 @@ Everything time-related is **derived live** from `startTime`, not stored:
 Because time is derived, there is nothing to tick or persist per second; a saved
 `startTime` is enough to reconstruct the full clock on reload.
 
+Display-only formatting getters (`finishTimeDisplay`, `timeLeftDisplay`,
+`currentSegmentDistanceDisplay`, `averagePaceDisplay`, `statusDisplay`,
+`completionSummary`, …) live in an extension in
+`lib/models/running_session_display.dart`, re-exported from `running_session.dart`
+so importing the model gives them automatically. This keeps display concerns out
+of the domain model.
+
 ## Lifecycle
 
 1. **Create** — `MainScreen._initializeSession`. If no `existingSession` is passed,
@@ -41,7 +48,9 @@ Because time is derived, there is nothing to tick or persist per second; a saved
    (`_goToNextKm` / `_goToPreviousKm`).
 3. **Complete a km** — "GOT IT!" button or double-tap (if enabled) → `_goToNextKm`
    stamps the current target's `completedAt` / `actualTime`, advances `currentKm`,
-   fires feedback (flash + vibrate + TTS announcement), saves.
+   fires feedback (flash + vibrate + TTS announcement), saves. The announcement text
+   is built by `AnnouncementBuilder.build(session)` (`lib/services/announcement_builder.dart`,
+   pure + unit-tested) and spoken with `playMp3: true` so the post-TTS MP3 plays.
 4. **Finish** — on the last km the button becomes "FINISH!" → confirm dialog →
    `_finishSession`: stamp final target, set `isCompleted`, push to history, clear
    the active session, go to `CompletionScreen`.
@@ -50,8 +59,11 @@ Because time is derived, there is nothing to tick or persist per second; a saved
 
 ## Gestures (main screen)
 
-The main content area is one `GestureDetector` (`MainScreen.build`) carrying three
-gestures. They coexist — Flutter disambiguates by tap count / hold duration.
+The main content area is one `GestureDetector` (`MainScreen.build`, wrapping the
+`RunStatsView` widget) carrying three gestures. They coexist — Flutter
+disambiguates by tap count / hold duration. The build is composed of extracted
+widgets: `RunHeader` (top bar + abort ✕), `RunStatsView` (live stats),
+`RunControls` (back / GOT IT–FINISH buttons), and `PausedOverlay`.
 
 | Gesture | Action | Guard |
 |---|---|---|
@@ -91,7 +103,7 @@ Distinct from backgrounding — an explicit, deliberate stop that **freezes the 
 - **Trigger** — long-press the main screen (coexists with tap→AIMP and double-tap→complete).
 - **Pause** (`_pauseSession`) — set `pausedAt = now`, stop timers, save. While
   `pausedAt` is set, `elapsedTime` uses it as "now", so every displayed value holds
-  still. A full-screen **"Paused"** overlay with a large **CONTINUE** button covers the UI.
+  still. The full-screen `PausedOverlay` widget (large **CONTINUE** button) covers the UI.
 - **Continue** (`_continueSession`) — shift `startTime` forward by the paused gap
   (`now - pausedAt`), clear `pausedAt`, restart timers, save. The absorbed gap means
   the clock resumes exactly where it stopped — the pause never counts as run time.
