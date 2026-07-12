@@ -66,6 +66,7 @@ class RunningSession {
   final int currentKm;
   final bool isCompleted;
   final bool isAborted;
+  final DateTime? pausedAt;
 
   const RunningSession({
     required this.id,
@@ -77,11 +78,15 @@ class RunningSession {
     this.currentKm = 1,
     this.isCompleted = false,
     this.isAborted = false,
+    this.pausedAt,
   });
 
   int get totalKilometers => distance.ceil();
 
-  Duration get elapsedTime => DateTime.now().difference(startTime);
+  bool get isPaused => pausedAt != null;
+
+  // While paused, freeze the clock at pausedAt so all derived values hold still.
+  Duration get elapsedTime => (pausedAt ?? DateTime.now()).difference(startTime);
 
   Duration get targetTimeForCurrentKm {
     if (isPartialLastKilometer) {
@@ -318,6 +323,7 @@ class RunningSession {
     'currentKm': currentKm,
     'isCompleted': isCompleted,
     'isAborted': isAborted,
+    'pausedAt': pausedAt?.toIso8601String(),
   };
 
   factory RunningSession.fromJson(Map<String, dynamic> json) => RunningSession(
@@ -332,6 +338,9 @@ class RunningSession {
     currentKm: json['currentKm'] as int? ?? 1,
     isCompleted: json['isCompleted'] as bool? ?? false,
     isAborted: json['isAborted'] as bool? ?? false,
+    pausedAt: json['pausedAt'] != null
+        ? DateTime.parse(json['pausedAt'] as String)
+        : null,
   );
 
   RunningSession copyWith({
@@ -344,6 +353,8 @@ class RunningSession {
     int? currentKm,
     bool? isCompleted,
     bool? isAborted,
+    DateTime? pausedAt,
+    bool clearPausedAt = false, // ?? idiom can't null a field; use this to clear
   }) => RunningSession(
     id: id ?? this.id,
     distance: distance ?? this.distance,
@@ -354,5 +365,6 @@ class RunningSession {
     currentKm: currentKm ?? this.currentKm,
     isCompleted: isCompleted ?? this.isCompleted,
     isAborted: isAborted ?? this.isAborted,
+    pausedAt: clearPausedAt ? null : (pausedAt ?? this.pausedAt),
   );
 }

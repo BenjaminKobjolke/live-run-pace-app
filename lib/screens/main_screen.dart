@@ -34,6 +34,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   Timer? _buttonDelayTimer;
   bool _showFlash = false;
   bool _buttonsEnabled = true;
+  bool _isPaused = false;
   TtsSpeaker? _ttsSpeaker;
   bool _isAppInBackground = false;
   static const MethodChannel _aimpChannel = MethodChannel('com.yourapp.live_run_pace/aimp');
@@ -60,6 +61,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   void _initializeSession() {
     if (widget.existingSession != null) {
       _session = widget.existingSession!;
+      _isPaused = _session.isPaused; // recovered mid-pause -> reopen paused
       // Existing session - buttons are enabled immediately
     } else {
       final targets = List.generate(
@@ -85,6 +87,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   }
 
   void _startTimers() {
+    if (_isPaused) return; // frozen while paused
     if (!_isAppInBackground) {
       _timer = Timer.periodic(const Duration(seconds: 10), (_) {
         if (mounted && !_isAppInBackground) setState(() {});
@@ -129,6 +132,29 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   Future<void> _saveSession() async {
     await StorageService.instance.saveActiveSession(_session);
+  }
+
+  void _pauseSession() {
+    _stopTimers();
+    setState(() {
+      _session = _session.copyWith(pausedAt: DateTime.now());
+      _isPaused = true;
+    });
+    _saveSession();
+  }
+
+  void _continueSession() {
+    // Shift startTime forward by the paused gap so elapsed time resumes exactly.
+    final pausedGap = DateTime.now().difference(_session.pausedAt!);
+    setState(() {
+      _session = _session.copyWith(
+        startTime: _session.startTime.add(pausedGap),
+        clearPausedAt: true,
+      );
+      _isPaused = false;
+    });
+    _startTimers();
+    _saveSession();
   }
 
   void _disableButtonsTemporarily() {
@@ -478,6 +504,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                     child: GestureDetector(
                       onTap: widget.ttsSettings.touchToToggleAimp ? _triggerAimpPlay : null,
                       onDoubleTap: (widget.ttsSettings.doubleTapToCompleteKm && _buttonsEnabled) ? _goToNextKm : null,
+                      onLongPress: _buttonsEnabled ? _pauseSession : null,
                       behavior: HitTestBehavior.opaque,
                       child: Column(
                         children: [
@@ -654,6 +681,56 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
               width: double.infinity,
               height: double.infinity,
               color: Colors.white,
+            ),
+
+          if (_isPaused)
+            Container(
+              width: double.infinity,
+              height: double.infinity,
+              color: Colors.black,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        'Paused',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 42,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _continueSession,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            foregroundColor: Colors.white,
+                            side: const BorderSide(color: Colors.white, width: 2),
+                            padding: const EdgeInsets.symmetric(vertical: 20),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          child: const Text(
+                            'CONTINUE',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
         ],
       ),
