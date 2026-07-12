@@ -141,6 +141,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       _isPaused = true;
     });
     _saveSession();
+    _ttsSpeaker?.speak('Session paused.'); // no-ops if TTS disabled in settings
   }
 
   void _continueSession() {
@@ -155,6 +156,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     });
     _startTimers();
     _saveSession();
+    _ttsSpeaker?.speak('Session resumed.'); // no-ops if TTS disabled in settings
   }
 
   void _disableButtonsTemporarily() {

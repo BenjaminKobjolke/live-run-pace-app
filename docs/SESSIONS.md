@@ -95,6 +95,8 @@ Distinct from backgrounding — an explicit, deliberate stop that **freezes the 
 - **Continue** (`_continueSession`) — shift `startTime` forward by the paused gap
   (`now - pausedAt`), clear `pausedAt`, restart timers, save. The absorbed gap means
   the clock resumes exactly where it stopped — the pause never counts as run time.
+- **TTS** — if TTS is enabled in settings, pause speaks "Session paused." and
+  continue speaks "Session resumed." (`TtsSpeaker.speak` no-ops when TTS is off).
 - **Persisted** — `pausedAt` is part of the session JSON. If the app is killed while
   paused, recovery reopens the run **still paused** (overlay shown, clock frozen);
   Continue resumes cleanly. No time is lost.
