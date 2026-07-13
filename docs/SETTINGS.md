@@ -9,9 +9,9 @@ a tab:
 
 | Tab | Contents |
 |-----|----------|
-| **TTS** | TTS Enabled, Speed, Volume, Delay after audio, Pause other apps audio, Resume AIMP after playback |
-| **Gestures** | Touch to toggle AIMP, Double tap to complete km, Delay button navigation |
-| **MP3** | The MP3 file list (with per-file preview playback) + Add Files / Add Folder |
+| **TTS** | TTS Enabled, Speed, Volume, Delay after audio, Pause other apps audio, Resume AIMP after playback, **Test Voice** |
+| **Gestures** | Single tap / Double tap / Long press → action dropdowns, Delay button navigation |
+| **MP3** | The MP3 file list (with per-file preview playback) + Add Files / Add Folder / **Refresh Folder** |
 
 The single **Save** action lives in the AppBar and applies across all tabs.
 
@@ -21,10 +21,14 @@ The single **Save** action lives in the AppBar and applies across all tabs.
 |------|------|
 | `lib/screens/settings_screen.dart` | `SettingsScreen` — the full-screen UI (thin: state + result handling). |
 | `lib/models/tts_settings.dart` | `TtsSettings` — immutable data model + JSON (de)serialization. |
-| `lib/services/mp3_picker_service.dart` | `Mp3PickerService` — UI-free file/folder picking, permissions, and recursive scan; returns a typed `Mp3PickResult`. |
-| `lib/widgets/mp3_settings_tab.dart` | `Mp3SettingsTab` — the MP3 tab body (header, list, Add Files/Folder buttons); picking injected via callbacks. |
-| `lib/widgets/mp3_file_list.dart` | `Mp3FileList` — the selected-files list (preview ▶ / remove / Clear All); owns a preview `AudioPlayer`. |
-| `lib/widgets/setting_controls.dart` | `SettingSwitch` / `SettingSlider` — reusable labeled rows. |
+| `lib/models/gesture_action.dart` | `GestureAction` — enum of actions assignable to a gesture (with display `label`). |
+| `lib/models/mp3_pick_result.dart` | `Mp3PickStatus` / `Mp3PickResult` — typed outcomes for file/folder picking. |
+| `lib/services/mp3_picker_service.dart` | `Mp3PickerService` — UI-free file/folder picking, permissions, recursive scan, and `rescanFolder`; returns a typed `Mp3PickResult`. |
+| `lib/widgets/mp3_settings_tab.dart` | `Mp3SettingsTab` — the MP3 tab body (header, list, Add Files/Folder + Refresh buttons); picking injected via callbacks. |
+| `lib/widgets/tts_settings_tab.dart` | `TtsSettingsTab` — TTS controls, audio focus switches, and Test Voice button. |
+| `lib/widgets/gesture_settings_tab.dart` | `GestureSettingsTab` — per-gesture action dropdowns and navigation delay switch. |
+| `lib/widgets/mp3_file_list.dart` | `Mp3FileList` — the selected-files list (preview / remove / Clear All); owns a preview `AudioPlayer`. |
+| `lib/widgets/setting_controls.dart` | `SettingSwitch` / `SettingSlider` / `SettingDropdown<T>` — reusable labeled rows. |
 | `lib/widgets/confirm_dialog.dart`, `info_dialog.dart` | Shared `showConfirmDialog` / `showInfoDialog` helpers. |
 | `lib/services/storage_service.dart` | Persists to `SharedPreferences` under key `tts_settings`. |
 | `lib/screens/start_screen.dart` | Opens the screen (gear icon) and owns persistence. |
@@ -63,11 +67,38 @@ opens showing the last-saved values.
 | `volume` | Slider | 0.5–2.0, 15 divisions | `1.5` | TTS volume. |
 | `pauseOtherAudio` | Switch | on/off | `true` | Grab audio focus during announcements (pauses other apps). Gates "Resume AIMP". |
 | `resumeAimpAfterPlayback` | Switch | on/off | `false` | Auto-resume AIMP after the TTS+MP3 sequence. Only editable when `pauseOtherAudio` is on. |
-| `touchToToggleAimp` | Switch | on/off | `false` | Single tap on main screen plays/pauses AIMP. |
-| `doubleTapToCompleteKm` | Switch | on/off | `false` | Double tap on main screen marks a kilometer complete. |
+| `singleTapAction` | Dropdown | `GestureAction` | `none` | Action for a single tap on the main run screen. |
+| `doubleTapAction` | Dropdown | `GestureAction` | `none` | Action for a double tap on the main run screen. |
+| `longPressAction` | Dropdown | `GestureAction` | `pause` | Action for a long press on the main run screen. |
 | `buttonNavigationDelay` | Switch | on/off | `true` | Adds a delay before button navigation on the main screen. |
 | `delayAfterAudioMs` | Slider | 0–3000 ms, 100 ms steps | `1000` | Tail-drain delay after each MP3 finishes, before the player is torn down. Lets the last buffered audio play out (some devices otherwise clip the last 1-2s). |
 | `mp3FilePaths` | File/folder pickers + list | list of paths | `[]` | MP3/WAV/M4A files played (random pick) after each TTS announcement. |
+| `mp3FolderPath` | (set by Add/Refresh Folder) | path or null | `null` | Last-picked MP3 folder. Enables the **Refresh Folder** re-scan. |
+
+### Test Voice
+
+The TTS tab has a **Test Voice** button (below "Resume AIMP"). It speaks a sample
+phrase at the *current, unsaved* Speed/Volume slider values so the user can tune by ear
+before saving. It builds a throwaway `TtsSpeaker` from `currentSettings.copyWith(...)`
+with `pauseOtherAudio: false`, `resumeAimpAfterPlayback: false`, and empty
+`mp3FilePaths` — so it never grabs audio focus, plays an MP3, or resumes AIMP; a clean,
+isolated preview. The button is disabled while speaking (`speak()` awaits completion).
+
+### Gesture actions
+
+`GestureAction` (`lib/models/gesture_action.dart`): `none`, `toggleAimp`, `completeKm`,
+`previousKm`, `pause`, `abort`. Each of the three gestures (single tap / double tap /
+long press) picks one via a `SettingDropdown`. `main_screen.dart`'s single
+`GestureDetector` resolves each to a handler via `_gestureCallback`, preserving prior
+gating: `completeKm`/`previousKm`/`pause` respect the button debounce (`_buttonsEnabled`);
+`toggleAimp`/`abort` are ungated (`abort` has its own confirm dialog). `none` disables the
+gesture. `completeKm`/`previousKm` route through the widget-level `_onNext`/`_onPrevious`
+so their dialogs, screen-flash, and vibration are preserved.
+
+**Backward compatibility:** `TtsSettings.fromJson` migrates the old booleans when the new
+keys are absent — `touchToToggleAimp: true → singleTapAction: toggleAimp`,
+`doubleTapToCompleteKm: true → doubleTapAction: completeKm`, and long press defaults to
+`pause` (its former hardwired behaviour).
 
 ### MP3 selection
 
@@ -77,7 +108,13 @@ the screen thin and makes the picker testable.
 
 - **Add Files** — multi-select picker (`file_picker`). Falls back across
   `FileType.audio` → `custom` → `any` depending on Android version.
-- **Add Folder** — picks a directory, recursively scans for `mp3`/`wav`/`m4a`.
+- **Add Folder** — picks a directory, recursively scans for `mp3`/`wav`/`m4a`. The chosen
+  folder is remembered in `mp3FolderPath` (surfaced via `Mp3PickResult.folderPath`).
+- **Refresh Folder** — re-scans the remembered `mp3FolderPath` (no picker dialog) via
+  `Mp3PickerService.rescanFolder`, appending audio files not already listed. Only shown once
+  a folder has been picked. **Add-new-only:** it never removes files — deleted tracks are not
+  pruned (the flat list has no folder provenance); use each row's × or **Clear All** to drop
+  files. `pickFolder` and `rescanFolder` share the scan/dedup logic (`_scanFolderResult`).
 - Duplicates are filtered; each file has an × to remove; **Clear All** appears
   when more than one file is present (`Mp3FileList`).
 - Each row has a ▶ **preview** button — tap to play the file for testing, tap ■ to
@@ -119,8 +156,10 @@ first. Per-device tuning knob — default 1000 ms; `0` disables the wait.
 
 `StorageService` JSON-encodes `TtsSettings.toJson()` into `SharedPreferences`
 (key `tts_settings`). `TtsSettings.fromJson` is backward-compatible: an old
-single `mp3FilePath` string is migrated into the `mp3FilePaths` list. Missing
-keys fall back to the defaults above.
+single `mp3FilePath` string is migrated into the `mp3FilePaths` list, and the old
+`touchToToggleAimp` / `doubleTapToCompleteKm` gesture booleans migrate into the new
+`GestureAction` fields (see [Gesture actions](#gesture-actions)). Missing keys fall back to
+the defaults above.
 
 ## History
 

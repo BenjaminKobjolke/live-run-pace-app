@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:vibration/vibration.dart';
 import '../models/app_settings.dart';
+import '../models/gesture_action.dart';
 import '../models/running_session.dart';
 import '../models/tts_settings.dart';
 import '../widgets/run_stats_view.dart';
@@ -120,6 +121,28 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     );
   }
 
+  /// Resolves a configured [GestureAction] to its handler, preserving the
+  /// gating each action had when hardwired (navigation actions respect the
+  /// button debounce; AIMP toggle and abort are ungated). Returns null when the
+  /// action is [GestureAction.none] or currently unavailable, disabling that
+  /// gesture on the [GestureDetector].
+  VoidCallback? _gestureCallback(GestureAction action) {
+    switch (action) {
+      case GestureAction.none:
+        return null;
+      case GestureAction.toggleAimp:
+        return _controller.triggerAimpPlay;
+      case GestureAction.completeKm:
+        return _buttonsEnabled ? _onNext : null;
+      case GestureAction.previousKm:
+        return _buttonsEnabled ? _onPrevious : null;
+      case GestureAction.pause:
+        return _buttonsEnabled ? _controller.pauseSession : null;
+      case GestureAction.abort:
+        return _showAbortConfirmation;
+    }
+  }
+
   Future<void> _showAbortConfirmation() async {
     final ok = await showConfirmDialog(
       context,
@@ -169,17 +192,15 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                       // control, double-tap km completion, and long-press pause.
                       Expanded(
                         child: GestureDetector(
-                          onTap: widget.ttsSettings.touchToToggleAimp
-                              ? _controller.triggerAimpPlay
-                              : null,
-                          onDoubleTap:
-                              (widget.ttsSettings.doubleTapToCompleteKm &&
-                                  _buttonsEnabled)
-                              ? _onNext
-                              : null,
-                          onLongPress: _buttonsEnabled
-                              ? _controller.pauseSession
-                              : null,
+                          onTap: _gestureCallback(
+                            widget.ttsSettings.singleTapAction,
+                          ),
+                          onDoubleTap: _gestureCallback(
+                            widget.ttsSettings.doubleTapAction,
+                          ),
+                          onLongPress: _gestureCallback(
+                            widget.ttsSettings.longPressAction,
+                          ),
                           behavior: HitTestBehavior.opaque,
                           child: RunStatsView(session: session),
                         ),

@@ -2,55 +2,8 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+import '../models/mp3_pick_result.dart';
 import 'app_logger.dart';
-
-/// Outcome of an MP3 pick/scan operation.
-enum Mp3PickStatus {
-  /// New files were selected (see [Mp3PickResult.paths]).
-  added,
-
-  /// User cancelled the picker; nothing to do.
-  cancelled,
-
-  /// Storage/audio permission was denied for this attempt.
-  permissionDenied,
-
-  /// Permission was permanently denied; user must enable it in app settings.
-  permissionPermanentlyDenied,
-
-  /// A folder was chosen but contained no audio files.
-  emptyFolder,
-
-  /// A folder was chosen but every audio file was already in the list.
-  noNewFiles,
-
-  /// The picker failed with an error (see [Mp3PickResult.errorDetails]).
-  error,
-}
-
-/// Result of an MP3 pick/scan, including the selected [paths] and context for
-/// user-facing messaging.
-class Mp3PickResult {
-  final Mp3PickStatus status;
-  final List<String> paths;
-
-  /// Total audio files found in a scanned folder (for empty/no-new messaging).
-  final int totalFound;
-
-  /// Error text when [status] is [Mp3PickStatus.error].
-  final String? errorDetails;
-
-  /// Detected Android SDK version (0 on non-Android), for version-specific hints.
-  final int androidVersion;
-
-  const Mp3PickResult(
-    this.status, {
-    this.paths = const [],
-    this.totalFound = 0,
-    this.errorDetails,
-    this.androidVersion = 0,
-  });
-}
 
 /// Picks and scans audio files, handling Android-version-specific permission
 /// and file-picker quirks. UI-free so it can be tested and reused; callers map
@@ -141,30 +94,10 @@ class Mp3PickerService {
       }
       AppLogger.d('Selected directory: $selectedDirectory');
 
-      final audioFiles = await _getAudioFilesFromDirectory(selectedDirectory);
-      if (audioFiles.isEmpty) {
-        return Mp3PickResult(
-          Mp3PickStatus.emptyFolder,
-          androidVersion: androidVersion,
-        );
-      }
-
-      final newPaths = audioFiles
-          .where((path) => !existingPaths.contains(path))
-          .toList();
-      if (newPaths.isEmpty) {
-        return Mp3PickResult(
-          Mp3PickStatus.noNewFiles,
-          totalFound: audioFiles.length,
-          androidVersion: androidVersion,
-        );
-      }
-
-      AppLogger.d('Added ${newPaths.length} audio files from folder');
-      return Mp3PickResult(
-        Mp3PickStatus.added,
-        paths: newPaths,
-        androidVersion: androidVersion,
+      return await _scanFolderResult(
+        selectedDirectory,
+        existingPaths,
+        androidVersion,
       );
     } catch (e) {
       AppLogger.e('Folder picker error', error: e);
@@ -174,6 +107,80 @@ class Mp3PickerService {
         androidVersion: androidVersion,
       );
     }
+  }
+
+  /// Re-scans an already-known [folderPath] (no picker dialog) and returns audio
+  /// files not already in [existingPaths]. Used by the settings "Refresh"
+  /// action to pick up files added to the folder after it was first selected.
+  Future<Mp3PickResult> rescanFolder(
+    String folderPath,
+    List<String> existingPaths,
+  ) async {
+    final androidVersion = await _androidVersion();
+    try {
+      final permission = await _getStoragePermission();
+      final status = await permission.request();
+      if (status.isPermanentlyDenied) {
+        return Mp3PickResult(
+          Mp3PickStatus.permissionPermanentlyDenied,
+          androidVersion: androidVersion,
+        );
+      }
+      if (status.isDenied) {
+        return Mp3PickResult(
+          Mp3PickStatus.permissionDenied,
+          androidVersion: androidVersion,
+        );
+      }
+
+      return await _scanFolderResult(folderPath, existingPaths, androidVersion);
+    } catch (e) {
+      AppLogger.e('Folder rescan error', error: e);
+      return Mp3PickResult(
+        Mp3PickStatus.error,
+        errorDetails: e.toString(),
+        androidVersion: androidVersion,
+        folderPath: folderPath,
+      );
+    }
+  }
+
+  /// Scans [directory] for audio files, dedups against [existingPaths], and maps
+  /// the outcome to an [Mp3PickResult]. Shared by [pickFolder] and
+  /// [rescanFolder]; always carries [folderPath] so callers can persist it.
+  Future<Mp3PickResult> _scanFolderResult(
+    String directory,
+    List<String> existingPaths,
+    int androidVersion,
+  ) async {
+    final audioFiles = await _getAudioFilesFromDirectory(directory);
+    if (audioFiles.isEmpty) {
+      return Mp3PickResult(
+        Mp3PickStatus.emptyFolder,
+        androidVersion: androidVersion,
+        folderPath: directory,
+      );
+    }
+
+    final newPaths = audioFiles
+        .where((path) => !existingPaths.contains(path))
+        .toList();
+    if (newPaths.isEmpty) {
+      return Mp3PickResult(
+        Mp3PickStatus.noNewFiles,
+        totalFound: audioFiles.length,
+        androidVersion: androidVersion,
+        folderPath: directory,
+      );
+    }
+
+    AppLogger.d('Added ${newPaths.length} audio files from folder');
+    return Mp3PickResult(
+      Mp3PickStatus.added,
+      paths: newPaths,
+      androidVersion: androidVersion,
+      folderPath: directory,
+    );
   }
 
   Future<int> _androidVersion() async {

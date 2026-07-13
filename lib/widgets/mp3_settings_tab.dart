@@ -23,6 +23,10 @@ class Mp3SettingsTab extends StatelessWidget {
   /// Opens the folder picker.
   final VoidCallback onPickFolder;
 
+  /// Re-scans the last-picked folder. Null when no folder is remembered yet
+  /// (hides the Refresh button).
+  final VoidCallback? onRefreshFolder;
+
   const Mp3SettingsTab({
     super.key,
     required this.filePaths,
@@ -31,6 +35,7 @@ class Mp3SettingsTab extends StatelessWidget {
     required this.onClearAll,
     required this.onPickFiles,
     required this.onPickFolder,
+    required this.onRefreshFolder,
   });
 
   @override
@@ -73,6 +78,10 @@ class Mp3SettingsTab extends StatelessWidget {
             ),
           ],
         ),
+        if (onRefreshFolder != null) ...[
+          const SizedBox(height: 8),
+          _addButton('Refresh Folder', enabled ? onRefreshFolder : null),
+        ],
       ],
     );
   }

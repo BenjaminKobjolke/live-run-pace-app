@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../models/gesture_action.dart';
+import '../models/mp3_pick_result.dart';
 import '../models/tts_settings.dart';
+import '../services/app_logger.dart';
 import '../services/mp3_picker_service.dart';
+import '../services/tts_speaker.dart';
 import '../widgets/confirm_dialog.dart';
+import '../widgets/gesture_settings_tab.dart';
 import '../widgets/info_dialog.dart';
 import '../widgets/mp3_settings_tab.dart';
-import '../widgets/setting_controls.dart';
+import '../widgets/tts_settings_tab.dart';
 
 /// Settings screen for TTS, audio, and gesture options.
 class SettingsScreen extends StatefulWidget {
@@ -26,11 +31,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late double _volume;
   late bool _pauseOtherAudio;
   List<String> _mp3FilePaths = [];
+  String? _mp3FolderPath;
   late bool _resumeAimpAfterPlayback;
-  late bool _touchToToggleAimp;
-  late bool _doubleTapToCompleteKm;
+  late GestureAction _singleTapAction;
+  late GestureAction _doubleTapAction;
+  late GestureAction _longPressAction;
   late bool _buttonNavigationDelay;
   late int _delayAfterAudioMs;
+
+  /// True while a Test Voice preview is speaking (guards re-entrancy).
+  bool _testing = false;
 
   @override
   void initState() {
@@ -41,11 +51,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _volume = s.volume;
     _pauseOtherAudio = s.pauseOtherAudio;
     _mp3FilePaths = List<String>.from(s.mp3FilePaths);
+    _mp3FolderPath = s.mp3FolderPath;
     _resumeAimpAfterPlayback = s.resumeAimpAfterPlayback;
-    _touchToToggleAimp = s.touchToToggleAimp;
-    _doubleTapToCompleteKm = s.doubleTapToCompleteKm;
+    _singleTapAction = s.singleTapAction;
+    _doubleTapAction = s.doubleTapAction;
+    _longPressAction = s.longPressAction;
     _buttonNavigationDelay = s.buttonNavigationDelay;
     _delayAfterAudioMs = s.delayAfterAudioMs;
+  }
+
+  /// Speaks a sample phrase at the current Speed/Volume slider values so the
+  /// user can preview them before saving. Builds a throwaway [TtsSpeaker] with
+  /// audio focus, AIMP resume, and MP3 disabled so it never disturbs other apps.
+  Future<void> _testTts() async {
+    if (_testing) return;
+    setState(() => _testing = true);
+    final probe = widget.currentSettings.copyWith(
+      enabled: true,
+      speed: _speed,
+      volume: _volume,
+      pauseOtherAudio: false,
+      resumeAimpAfterPlayback: false,
+      mp3FilePaths: const [],
+    );
+    final speaker = TtsSpeaker(probe);
+    try {
+      await speaker.init();
+      await speaker.speak('Pace on target. Keep it up.');
+    } catch (e) {
+      AppLogger.e('TTS test failed', error: e);
+    } finally {
+      await speaker.dispose();
+      if (mounted) setState(() => _testing = false);
+    }
+  }
+
+  Future<void> _refreshFolder() async {
+    final folder = _mp3FolderPath;
+    if (folder == null) return;
+    final result = await _picker.rescanFolder(folder, _mp3FilePaths);
+    if (!mounted) return;
+    await _handlePickResult(result, isFolder: true);
   }
 
   Future<void> _pickFiles() async {
@@ -64,6 +110,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Mp3PickResult result, {
     required bool isFolder,
   }) async {
+    // Remember the folder (from any folder op that reached it) so Refresh works.
+    if (isFolder && result.folderPath != null) {
+      _mp3FolderPath = result.folderPath;
+    }
     switch (result.status) {
       case Mp3PickStatus.added:
         if (result.paths.isNotEmpty) {
@@ -141,9 +191,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         volume: _volume,
         pauseOtherAudio: _pauseOtherAudio,
         mp3FilePaths: _mp3FilePaths,
+        mp3FolderPath: _mp3FolderPath,
         resumeAimpAfterPlayback: _resumeAimpAfterPlayback,
-        touchToToggleAimp: _touchToToggleAimp,
-        doubleTapToCompleteKm: _doubleTapToCompleteKm,
+        singleTapAction: _singleTapAction,
+        doubleTapAction: _doubleTapAction,
+        longPressAction: _longPressAction,
         buttonNavigationDelay: _buttonNavigationDelay,
         delayAfterAudioMs: _delayAfterAudioMs,
       ),
@@ -185,91 +237,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildTtsTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SettingSwitch(
-            label: 'TTS Enabled',
-            value: _enabled,
-            onChanged: (v) => setState(() => _enabled = v),
-          ),
-          const SizedBox(height: 20),
-          SettingSlider(
-            label: 'Speed: ${_speed.toStringAsFixed(1)}',
-            value: _speed,
-            min: 0.1,
-            max: 1.0,
-            divisions: 9,
-            onChanged: _enabled ? (v) => setState(() => _speed = v) : null,
-          ),
-          const SizedBox(height: 20),
-          SettingSlider(
-            label: 'Volume: ${_volume.toStringAsFixed(1)}',
-            value: _volume,
-            min: 0.5,
-            max: 2.0,
-            divisions: 15,
-            onChanged: _enabled ? (v) => setState(() => _volume = v) : null,
-          ),
-          const SizedBox(height: 20),
-          SettingSlider(
-            label: 'Delay after audio: $_delayAfterAudioMs ms',
-            value: _delayAfterAudioMs.toDouble(),
-            min: 0,
-            max: 3000,
-            divisions: 30,
-            onChanged: _enabled
-                ? (v) => setState(() => _delayAfterAudioMs = v.round())
-                : null,
-          ),
-          const SizedBox(height: 20),
-          SettingSwitch(
-            label: 'Pause other apps audio',
-            value: _pauseOtherAudio,
-            onChanged: _enabled
-                ? (v) => setState(() => _pauseOtherAudio = v)
-                : null,
-          ),
-          const SizedBox(height: 20),
-          SettingSwitch(
-            label: 'Resume AIMP after playback',
-            value: _resumeAimpAfterPlayback,
-            onChanged: _pauseOtherAudio
-                ? (v) => setState(() => _resumeAimpAfterPlayback = v)
-                : null,
-          ),
-        ],
-      ),
+    return TtsSettingsTab(
+      enabled: _enabled,
+      speed: _speed,
+      volume: _volume,
+      pauseOtherAudio: _pauseOtherAudio,
+      resumeAimpAfterPlayback: _resumeAimpAfterPlayback,
+      delayAfterAudioMs: _delayAfterAudioMs,
+      testing: _testing,
+      onEnabledChanged: (value) => setState(() => _enabled = value),
+      onSpeedChanged: (value) => setState(() => _speed = value),
+      onVolumeChanged: (value) => setState(() => _volume = value),
+      onPauseOtherAudioChanged: (value) =>
+          setState(() => _pauseOtherAudio = value),
+      onResumeAimpAfterPlaybackChanged: (value) =>
+          setState(() => _resumeAimpAfterPlayback = value),
+      onDelayAfterAudioChanged: (value) =>
+          setState(() => _delayAfterAudioMs = value),
+      onTestVoice: _testTts,
     );
   }
 
   Widget _buildGesturesTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SettingSwitch(
-            label: 'Touch main screen to play/pause AIMP',
-            value: _touchToToggleAimp,
-            onChanged: (v) => setState(() => _touchToToggleAimp = v),
-          ),
-          const SizedBox(height: 20),
-          SettingSwitch(
-            label: 'Double tap main screen to complete kilometer',
-            value: _doubleTapToCompleteKm,
-            onChanged: (v) => setState(() => _doubleTapToCompleteKm = v),
-          ),
-          const SizedBox(height: 20),
-          SettingSwitch(
-            label: 'Delay button navigation',
-            value: _buttonNavigationDelay,
-            onChanged: (v) => setState(() => _buttonNavigationDelay = v),
-          ),
-        ],
-      ),
+    return GestureSettingsTab(
+      singleTapAction: _singleTapAction,
+      doubleTapAction: _doubleTapAction,
+      longPressAction: _longPressAction,
+      buttonNavigationDelay: _buttonNavigationDelay,
+      onSingleTapChanged: (value) => setState(() => _singleTapAction = value),
+      onDoubleTapChanged: (value) => setState(() => _doubleTapAction = value),
+      onLongPressChanged: (value) => setState(() => _longPressAction = value),
+      onButtonNavigationDelayChanged: (value) =>
+          setState(() => _buttonNavigationDelay = value),
     );
   }
 
@@ -283,6 +282,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         onClearAll: () => setState(() => _mp3FilePaths.clear()),
         onPickFiles: _pickFiles,
         onPickFolder: _pickFolder,
+        onRefreshFolder: _mp3FolderPath == null ? null : _refreshFolder,
       ),
     );
   }

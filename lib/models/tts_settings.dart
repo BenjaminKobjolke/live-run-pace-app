@@ -1,12 +1,24 @@
+import 'gesture_action.dart';
+
 class TtsSettings {
   final bool enabled;
   final double speed;
   final double volume;
   final bool pauseOtherAudio;
   final List<String> mp3FilePaths;
+
+  /// Last-picked MP3 folder, or null if none. Enables the "Refresh" re-scan.
+  final String? mp3FolderPath;
   final bool resumeAimpAfterPlayback;
-  final bool touchToToggleAimp;
-  final bool doubleTapToCompleteKm;
+
+  /// Action for a single tap on the main run screen.
+  final GestureAction singleTapAction;
+
+  /// Action for a double tap on the main run screen.
+  final GestureAction doubleTapAction;
+
+  /// Action for a long press on the main run screen.
+  final GestureAction longPressAction;
   final bool buttonNavigationDelay;
   final int delayAfterAudioMs;
 
@@ -16,9 +28,11 @@ class TtsSettings {
     this.volume = 1.5,
     this.pauseOtherAudio = true,
     this.mp3FilePaths = const [],
+    this.mp3FolderPath,
     this.resumeAimpAfterPlayback = false,
-    this.touchToToggleAimp = false,
-    this.doubleTapToCompleteKm = false,
+    this.singleTapAction = GestureAction.none,
+    this.doubleTapAction = GestureAction.none,
+    this.longPressAction = GestureAction.pause,
     this.buttonNavigationDelay = true,
     this.delayAfterAudioMs = 1000,
   });
@@ -29,27 +43,65 @@ class TtsSettings {
     'volume': volume,
     'pauseOtherAudio': pauseOtherAudio,
     'mp3FilePaths': mp3FilePaths,
+    'mp3FolderPath': mp3FolderPath,
     'resumeAimpAfterPlayback': resumeAimpAfterPlayback,
-    'touchToToggleAimp': touchToToggleAimp,
-    'doubleTapToCompleteKm': doubleTapToCompleteKm,
+    'singleTapAction': singleTapAction.name,
+    'doubleTapAction': doubleTapAction.name,
+    'longPressAction': longPressAction.name,
     'buttonNavigationDelay': buttonNavigationDelay,
     'delayAfterAudioMs': delayAfterAudioMs,
   };
 
-  factory TtsSettings.fromJson(Map<String, dynamic> json) {
-    return TtsSettings(
-      enabled: json['enabled'] as bool? ?? true,
-      speed: (json['speed'] as num?)?.toDouble() ?? 0.4,
-      volume: (json['volume'] as num?)?.toDouble() ?? 1.5,
-      pauseOtherAudio: json['pauseOtherAudio'] as bool? ?? true,
-      mp3FilePaths: _readMp3FilePaths(json),
-      resumeAimpAfterPlayback:
-          json['resumeAimpAfterPlayback'] as bool? ?? false,
-      touchToToggleAimp: json['touchToToggleAimp'] as bool? ?? false,
-      doubleTapToCompleteKm: json['doubleTapToCompleteKm'] as bool? ?? false,
-      buttonNavigationDelay: json['buttonNavigationDelay'] as bool? ?? true,
-      delayAfterAudioMs: (json['delayAfterAudioMs'] as num?)?.toInt() ?? 1000,
-    );
+  factory TtsSettings.fromJson(Map<String, dynamic> json) => TtsSettings(
+    enabled: json['enabled'] as bool? ?? true,
+    speed: (json['speed'] as num?)?.toDouble() ?? 0.4,
+    volume: (json['volume'] as num?)?.toDouble() ?? 1.5,
+    pauseOtherAudio: json['pauseOtherAudio'] as bool? ?? true,
+    mp3FilePaths: _mp3FilePaths(json),
+    mp3FolderPath: json['mp3FolderPath'] as String?,
+    resumeAimpAfterPlayback: json['resumeAimpAfterPlayback'] as bool? ?? false,
+    singleTapAction: _singleTapAction(json),
+    doubleTapAction: _doubleTapAction(json),
+    longPressAction: _gestureAction(
+      json['longPressAction'],
+      GestureAction.pause,
+    ),
+    buttonNavigationDelay: json['buttonNavigationDelay'] as bool? ?? true,
+    delayAfterAudioMs: (json['delayAfterAudioMs'] as num?)?.toInt() ?? 1000,
+  );
+
+  static List<String> _mp3FilePaths(Map<String, dynamic> json) {
+    final paths = json['mp3FilePaths'];
+    if (paths is List) return List<String>.from(paths);
+
+    final legacyPath = json['mp3FilePath'];
+    if (legacyPath is String) return [legacyPath];
+
+    return [];
+  }
+
+  static GestureAction _singleTapAction(Map<String, dynamic> json) =>
+      _gestureAction(
+        json['singleTapAction'],
+        _legacyGesture(json['touchToToggleAimp'], GestureAction.toggleAimp),
+      );
+
+  static GestureAction _doubleTapAction(Map<String, dynamic> json) =>
+      _gestureAction(
+        json['doubleTapAction'],
+        _legacyGesture(json['doubleTapToCompleteKm'], GestureAction.completeKm),
+      );
+
+  static GestureAction _legacyGesture(dynamic value, GestureAction action) =>
+      value == true ? action : GestureAction.none;
+
+  /// Parses a stored gesture-action name, falling back to [fallback] when the
+  /// value is absent or unrecognised.
+  static GestureAction _gestureAction(dynamic value, GestureAction fallback) {
+    if (value is String) {
+      return GestureAction.values.asNameMap()[value] ?? fallback;
+    }
+    return fallback;
   }
 
   TtsSettings copyWith({
@@ -58,9 +110,11 @@ class TtsSettings {
     double? volume,
     bool? pauseOtherAudio,
     List<String>? mp3FilePaths,
+    String? mp3FolderPath,
     bool? resumeAimpAfterPlayback,
-    bool? touchToToggleAimp,
-    bool? doubleTapToCompleteKm,
+    GestureAction? singleTapAction,
+    GestureAction? doubleTapAction,
+    GestureAction? longPressAction,
     bool? buttonNavigationDelay,
     int? delayAfterAudioMs,
   }) => TtsSettings(
@@ -69,25 +123,13 @@ class TtsSettings {
     volume: volume ?? this.volume,
     pauseOtherAudio: pauseOtherAudio ?? this.pauseOtherAudio,
     mp3FilePaths: mp3FilePaths ?? this.mp3FilePaths,
+    mp3FolderPath: mp3FolderPath ?? this.mp3FolderPath,
     resumeAimpAfterPlayback:
         resumeAimpAfterPlayback ?? this.resumeAimpAfterPlayback,
-    touchToToggleAimp: touchToToggleAimp ?? this.touchToToggleAimp,
-    doubleTapToCompleteKm: doubleTapToCompleteKm ?? this.doubleTapToCompleteKm,
+    singleTapAction: singleTapAction ?? this.singleTapAction,
+    doubleTapAction: doubleTapAction ?? this.doubleTapAction,
+    longPressAction: longPressAction ?? this.longPressAction,
     buttonNavigationDelay: buttonNavigationDelay ?? this.buttonNavigationDelay,
     delayAfterAudioMs: delayAfterAudioMs ?? this.delayAfterAudioMs,
   );
-}
-
-List<String> _readMp3FilePaths(Map<String, dynamic> json) {
-  final paths = json['mp3FilePaths'];
-  if (paths is List) {
-    return List<String>.from(paths);
-  }
-
-  final legacyPath = json['mp3FilePath'];
-  if (legacyPath is String) {
-    return [legacyPath];
-  }
-
-  return [];
 }
