@@ -75,17 +75,19 @@ Access detailed configuration via the settings gear icon:
 - Enable/disable voice announcements
 - Adjust speech speed (0.1x to 1.0x)
 - Control TTS volume (0.5x to 2.0x)
+- **Test Voice**: preview the current speed/volume before saving
 - Audio focus management (pause other apps during announcements)
 
 **Custom Audio Files:**
 - **Add Files**: Select individual MP3/WAV/M4A files
 - **Add Folder**: Bulk import all audio files from a directory
+- **Refresh Folder**: re-scan the last-picked folder to pick up newly added files
 - Random sound selection after each TTS announcement
 - Scrollable file list with individual remove options
 
 **Interaction Controls:**
-- Touch main screen to toggle AIMP play/pause
-- Double-tap main screen to mark kilometer completion
+- Assign an action to each gesture — single tap / double tap / long press
+- Actions: None, Toggle AIMP, Complete km, Previous km, Pause, Abort
 - Auto-resume AIMP after TTS announcements
 
 **Android Compatibility:**
@@ -108,9 +110,9 @@ Access detailed configuration via the settings gear icon:
    - 🔴 Red: Behind schedule
 2. **Mark Kilometers**:
    - Press "GOT IT!" button when you reach each km
-   - OR double-tap main screen (if enabled in settings)
+   - OR use a gesture assigned to "Complete km" in settings
 3. **Audio Control**:
-   - Single tap main screen to play/pause AIMP music (if enabled)
+   - Assign "Toggle AIMP" to a gesture to play/pause music from the main screen
    - Listen to voice announcements with optional custom sound alerts
 4. **Navigate**: Use back arrow to undo accidental taps
 

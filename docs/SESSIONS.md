@@ -46,8 +46,8 @@ of the domain model.
 2. **Run / autosave** — two 10s `Timer.periodic` (`_startTimers`): one repaints the
    UI, one autosaves the active session. Also saved immediately on every km change
    (`_goToNextKm` / `_goToPreviousKm`).
-3. **Complete a km** — "GOT IT!" button or double-tap (if enabled) → `_goToNextKm`
-   stamps the current target's `completedAt` / `actualTime`, advances `currentKm`,
+3. **Complete a km** — "GOT IT!" button or a gesture assigned the `completeKm` action →
+   `_goToNextKm` stamps the current target's `completedAt` / `actualTime`, advances `currentKm`,
    fires feedback (flash + vibrate + TTS announcement), saves. The announcement text
    is built by `AnnouncementBuilder.build(session)` (`lib/services/announcement_builder.dart`,
    pure + unit-tested) and spoken with `playMp3: true` so the post-TTS MP3 plays.
@@ -65,15 +65,32 @@ disambiguates by tap count / hold duration. The build is composed of extracted
 widgets: `RunHeader` (top bar + abort ✕), `RunStatsView` (live stats),
 `RunControls` (back / GOT IT–FINISH buttons), and `PausedOverlay`.
 
-| Gesture | Action | Guard |
+Each gesture's action is **user-configurable** in Settings → Gestures. The three
+gesture slots — `ttsSettings.singleTapAction`, `doubleTapAction`, `longPressAction`
+(each a `GestureAction`, see `lib/models/gesture_action.dart`) — are resolved to a
+handler by `_gestureCallback` in `MainScreen`. Returning `null` (for
+`GestureAction.none` or an unavailable action) disables that gesture.
+
+| `GestureAction` | Handler | Guard |
 |---|---|---|
-| Single tap | Toggle AIMP music player (play/pause) | `ttsSettings.touchToToggleAimp` |
-| Double tap | Complete current km — same as "GOT IT!" | `ttsSettings.doubleTapToCompleteKm` **and** `_buttonsEnabled` |
-| Long press | Pause the session (see [Pause](#pause)) | `_buttonsEnabled` |
+| `none` | — | always disabled |
+| `toggleAimp` | Toggle AIMP music player (play/pause) | ungated |
+| `completeKm` | Complete current km — same as "GOT IT!" (via `_onNext`) | `_buttonsEnabled` |
+| `previousKm` | Step back one km (via `_onPrevious`) | `_buttonsEnabled` |
+| `pause` | Pause the session (see [Pause](#pause)) | `_buttonsEnabled` |
+| `abort` | Abort with confirm dialog | ungated (dialog confirms) |
+
+Defaults: single tap `none`, double tap `none`, long press `pause`. `completeKm` /
+`previousKm` route through the widget-level `_onNext` / `_onPrevious` so their dialogs,
+screen-flash, and vibration are preserved; `toggleAimp` / `pause` call the controller
+directly.
 
 `_buttonsEnabled` is briefly false (~1s) right after a km change when
-`ttsSettings.buttonNavigationDelay` is on, to avoid accidental double-advances;
-long-press and double-tap are suppressed during that window.
+`ttsSettings.buttonNavigationDelay` is on, to avoid accidental double-advances; the
+`_buttonsEnabled`-guarded gesture actions are suppressed during that window.
+
+**Migration:** the former `touchToToggleAimp` / `doubleTapToCompleteKm` booleans are
+migrated by `TtsSettings.fromJson` — see [SETTINGS.md](SETTINGS.md#gesture-actions).
 
 ## Recovery
 
@@ -100,7 +117,7 @@ which is intended: a real run doesn't stop because the screen turned off.
 
 Distinct from backgrounding — an explicit, deliberate stop that **freezes the clock**.
 
-- **Trigger** — long-press the main screen (coexists with tap→AIMP and double-tap→complete).
+- **Trigger** — a gesture assigned the `pause` action (long press by default).
 - **Pause** (`_pauseSession`) — set `pausedAt = now`, stop timers, save. While
   `pausedAt` is set, `elapsedTime` uses it as "now", so every displayed value holds
   still. The full-screen `PausedOverlay` widget (large **CONTINUE** button) covers the UI.
