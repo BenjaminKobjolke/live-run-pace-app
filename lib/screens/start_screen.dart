@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/app_settings.dart';
 import '../models/tts_settings.dart';
 import '../services/storage_service.dart';
+import '../utils/distance_format.dart';
 import '../widgets/start_screen_sections.dart';
 import 'distance_input_screen.dart';
 import 'pace_input_screen.dart';
@@ -142,7 +143,7 @@ class _StartScreenState extends State<StartScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               DistanceSettingsRow(
-                distanceText: '${_settings.distance.toStringAsFixed(3)} km',
+                distanceText: '${formatDistance(_settings.distance)} km',
                 onDistanceTap: _showDistanceDialog,
                 onSettingsTap: _showTtsSettingsDialog,
               ),

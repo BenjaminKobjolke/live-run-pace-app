@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/storage_service.dart';
+import '../utils/distance_format.dart';
 import '../widgets/digit_keypad.dart';
 
 /// Full-screen distance editor driven by an on-screen [DigitKeypad] instead of
@@ -26,7 +27,7 @@ class _DistanceInputScreenState extends State<DistanceInputScreen> {
   @override
   void initState() {
     super.initState();
-    _value = widget.currentDistance.toStringAsFixed(3);
+    _value = formatDistance(widget.currentDistance);
     _loadSuggestions();
   }
 
@@ -67,7 +68,7 @@ class _DistanceInputScreenState extends State<DistanceInputScreen> {
   void _selectSuggestion(double distance) {
     setState(() {
       _unit = 'km';
-      _value = distance.toStringAsFixed(3);
+      _value = formatDistance(distance);
     });
   }
 
@@ -77,7 +78,7 @@ class _DistanceInputScreenState extends State<DistanceInputScreen> {
       final currentKm = _enteredValue;
       _unit = unit;
       if (unit == 'km') {
-        _value = currentKm.toStringAsFixed(3);
+        _value = formatDistance(currentKm);
       } else if (unit == 'm') {
         _value = (currentKm * 1000).toStringAsFixed(0);
       } else {
@@ -236,7 +237,7 @@ class _SuggestionChips extends StatelessWidget {
                 border: Border.all(color: Colors.white24),
               ),
               child: Text(
-                '${distance.toStringAsFixed(3)} km',
+                '${formatDistance(distance)} km',
                 style: const TextStyle(color: Colors.white, fontSize: 12),
               ),
             ),

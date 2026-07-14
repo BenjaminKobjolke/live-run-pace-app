@@ -36,7 +36,9 @@ Display-only formatting getters (`finishTimeDisplay`, `timeLeftDisplay`,
 `completionSummary`, …) live in an extension in
 `lib/models/running_session_display.dart`, re-exported from `running_session.dart`
 so importing the model gives them automatically. This keeps display concerns out
-of the domain model.
+of the domain model. Distance values are formatted with `formatDistance`
+(`lib/utils/distance_format.dart` — up to 3 decimals, trailing zeros trimmed),
+shared with the distance input and start screens.
 
 ## Lifecycle
 

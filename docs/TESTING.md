@@ -19,6 +19,10 @@ Or directly: `fvm flutter test`.
 | `test/app_settings_test.dart` | `AppSettings` time calc, pace/finish displays, JSON round-trip + defaults. |
 | `test/running_session_test.dart` | `paceStatus` (±10% band), `timeLeftForCurrentKm`, `isOverTime`, partial-last-km, JSON round-trip. |
 | `test/announcement_builder_test.dart` | Exact `AnnouncementBuilder.build` strings for on/behind/ahead schedule and final full/partial km. |
+| `test/run_session_controller_test.dart` | `RunSessionController` km advance, pause/continue clock shift, finish, ChangeNotifier contract. |
+| `test/tts_settings_test.dart` | `TtsSettings` legacy gesture-boolean migration, JSON round-trip, defaults. |
+| `test/digit_keypad_test.dart` | `DigitKeypad` widget: digit/decimal/backspace callbacks, inert `.` when `allowDecimal: false`. |
+| `test/distance_format_test.dart` | `formatDistance` trailing-zero trimming (`8.0 → "8"`, `8.5 → "8.5"`, partial zeros). |
 
 ## Deterministic time
 

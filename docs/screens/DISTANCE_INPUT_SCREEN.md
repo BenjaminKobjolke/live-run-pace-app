@@ -22,7 +22,8 @@ screen does `_settings.copyWith(distance: ...)` and saves.
 2. Read-only value display box (`_value` + unit suffix, green border).
 3. Unit selector `m` / `km` / `mi` — switching **converts** the current value.
 4. "Frequently Used" chips from `StorageService.getDistanceSuggestions(limit: 6)`;
-   tapping one sets the value in km. Hidden while loading or if empty.
+   tapping one sets the value in km. Hidden while loading or if empty. Chip labels
+   use `formatDistance` (trailing zeros trimmed).
 5. [`DigitKeypad`](../features/DIGIT_KEYPAD.md) (`allowDecimal: true`) filling the
    remaining space.
 6. Cancel / OK actions.
@@ -30,7 +31,8 @@ screen does `_settings.copyWith(distance: ...)` and saves.
 ## State & value
 
 - `String _value` — raw text being edited, in the selected `_unit`. Init from
-  `currentDistance.toStringAsFixed(3)`.
+  `formatDistance(currentDistance)` (`lib/utils/distance_format.dart` — up to 3
+  decimals, trailing zeros trimmed, so a saved `8.0` reopens as `8`, not `8.000`).
 - Keypad handlers: digit appends; decimal appends `.` only if none present (`''` →
   `0.`); backspace trims the last char.
 - `_enteredValue` getter parses `_value` and converts to km (`km` as-is, `m` /1000,

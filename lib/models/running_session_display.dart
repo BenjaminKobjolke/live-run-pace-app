@@ -1,3 +1,4 @@
+import '../utils/distance_format.dart';
 import 'running_session.dart';
 
 /// Formats a [Duration] as `h:mm:ss` (hours omitted when zero).
@@ -115,7 +116,7 @@ extension RunningSessionDisplay on RunningSession {
       if (meters < 1000) {
         return '$meters m';
       }
-      return '${lastSegmentDistance.toStringAsFixed(3)} km';
+      return '${formatDistance(lastSegmentDistance)} km';
     }
     return '$currentKm km';
   }
