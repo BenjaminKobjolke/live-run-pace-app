@@ -11,7 +11,7 @@ a tab:
 |-----|----------|
 | **TTS** | TTS Enabled, Speed, Volume, Delay after audio, Pause other apps audio, Resume AIMP after playback, **Test Voice** |
 | **Gestures** | Single tap / Double tap / Long press → action dropdowns, Delay button navigation |
-| **MP3** | The MP3 file list (with per-file preview playback) + Add Files / Add Folder / **Refresh Folder** |
+| **MP3** | The MP3 file list (with per-file preview playback) + Add Files / Add Folder / **Refresh Folder** — see [screens/MP3_SETTINGS_TAB.md](screens/MP3_SETTINGS_TAB.md) |
 
 The single **Save** action lives in the AppBar and applies across all tabs.
 
@@ -72,7 +72,7 @@ opens showing the last-saved values.
 | `longPressAction` | Dropdown | `GestureAction` | `pause` | Action for a long press on the main run screen. |
 | `buttonNavigationDelay` | Switch | on/off | `true` | Adds a delay before button navigation on the main screen. |
 | `delayAfterAudioMs` | Slider | 0–3000 ms, 100 ms steps | `1000` | Tail-drain delay after each MP3 finishes, before the player is torn down. Lets the last buffered audio play out (some devices otherwise clip the last 1-2s). |
-| `mp3FilePaths` | File/folder pickers + list | list of paths | `[]` | MP3/WAV/M4A files played (random pick) after each TTS announcement. |
+| `mp3FilePaths` | File/folder pickers + list | list of paths | `[]` | MP3/WAV/M4A files played (shuffled, no repeat until all played) after each TTS announcement. |
 | `mp3FolderPath` | (set by Add/Refresh Folder) | path or null | `null` | Last-picked MP3 folder. Enables the **Refresh Folder** re-scan. |
 
 ### Test Voice
@@ -132,10 +132,16 @@ the screen thin and makes the picker testable.
 ## Post-TTS MP3 playback
 
 Handled at runtime by `tts_speaker.dart` → `_playMp3WithFocus`, called from
-`TtsSpeaker.speak(text, {playMp3})`. A random file from `mp3FilePaths` plays via
+`TtsSpeaker.speak(text, {playMp3})`. A file from `mp3FilePaths` plays via
 `audioplayers` (`DeviceFileSource`) **only when `playMp3: true`** — used for
 kilometer-completion announcements. Pause/resume announcements call `speak()` with
 the default `playMp3: false`, so they never trigger an MP3.
+
+Selection is a **shuffle bag** (`Mp3ShuffleBag`, `lib/services/mp3_shuffle_bag.dart`,
+unit-tested): each file plays once in random order before any repeats, and no file
+plays twice in a row across bag refills (unless only one file is configured). The bag
+lives in the `TtsSpeaker` instance, which lives for the whole run session — restarting
+the app mid-run resets the cycle.
 
 Completion handling:
 

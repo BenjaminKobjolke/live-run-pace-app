@@ -1,11 +1,11 @@
 import 'dart:async';
-import 'dart:math';
 import 'package:audio_session/audio_session.dart' as audio_session;
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/services.dart';
 import '../models/tts_settings.dart';
 import 'app_logger.dart';
+import 'mp3_shuffle_bag.dart';
 
 class TtsSpeaker {
   final FlutterTts _tts = FlutterTts();
@@ -13,6 +13,11 @@ class TtsSpeaker {
   audio_session.AudioSession? _session;
   bool _active = false;
   final TtsSettings _settings;
+
+  /// Picks the post-TTS MP3: each configured file once per cycle, no
+  /// back-to-back repeats. Speaker lives for the whole run session, so the
+  /// no-repeat guarantee spans the session.
+  late final Mp3ShuffleBag _mp3Bag = Mp3ShuffleBag(_settings.mp3FilePaths);
   static const MethodChannel _channel = MethodChannel(
     'com.yourapp.live_run_pace/aimp',
   );
@@ -74,10 +79,11 @@ class TtsSpeaker {
     }
   }
 
-  /// Speaks [text] via TTS, then optionally plays a random MP3.
+  /// Speaks [text] via TTS, then optionally plays an MP3.
   ///
-  /// Pass [playMp3] `true` to play a random configured MP3 after the TTS
-  /// (used for kilometer-completion announcements). Default `false` = TTS only,
+  /// Pass [playMp3] `true` to play a configured MP3 after the TTS, picked via
+  /// [Mp3ShuffleBag] — shuffled, no repeat until every file has played (used
+  /// for kilometer-completion announcements). Default `false` = TTS only,
   /// used for pause/resume announcements which must not trigger an MP3.
   Future<void> speak(String text, {bool playMp3 = false}) async {
     AppLogger.d('=== Starting speak sequence ===');
@@ -114,11 +120,8 @@ class TtsSpeaker {
       }
 
       // Execute MP3 playback if requested and available (keeping our audio focus)
-      if (playMp3 && _settings.mp3FilePaths.isNotEmpty) {
-        // Randomly select an MP3 file
-        final random = Random();
-        final selectedFile = _settings
-            .mp3FilePaths[random.nextInt(_settings.mp3FilePaths.length)];
+      if (playMp3 && !_mp3Bag.isEmpty) {
+        final selectedFile = _mp3Bag.next();
         final fileName = selectedFile.split('/').last;
         AppLogger.d(
           'Starting MP3 playback (with our audio focus) - selected: $fileName',
