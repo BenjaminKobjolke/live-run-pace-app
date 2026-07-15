@@ -1,6 +1,6 @@
 # MP3 Settings Tab
 
-Third tab of the full-screen [Settings screen](../SETTINGS.md) (`TTS | Gestures | MP3`).
+Third tab of the full-screen [Settings screen](../SETTINGS.md) (`TTS | Gestures | MP3 | Screens | Backup`).
 Manages the list of audio files (MP3/WAV/M4A) that play — shuffled, no repeat until
 every file has played — after each kilometer-completion TTS announcement.
 

@@ -29,8 +29,14 @@ class RunSessionController extends ChangeNotifier {
   );
 
   late RunningSession _session;
-  Timer? _timer;
+  Timer? _tickTimer;
   Timer? _saveTimer;
+
+  /// The time-tick event source: fires once per second while the session
+  /// runs, frozen while paused or backgrounded (same semantics as the
+  /// derived clock). Tick-subscribed run widgets (see `RunEvent.timeTick`)
+  /// listen to this; km/session changes go through [notifyListeners] instead.
+  final ValueNotifier<DateTime> tick = ValueNotifier(DateTime.now());
   TtsSpeaker? _ttsSpeaker;
   bool _isAppInBackground = false;
   bool _isNewSession = false;
@@ -93,8 +99,8 @@ class RunSessionController extends ChangeNotifier {
     if (_session.isPaused) return; // frozen while paused
     if (_isAppInBackground) return;
 
-    _timer = Timer.periodic(const Duration(seconds: 10), (_) {
-      if (!_isAppInBackground) notifyListeners();
+    _tickTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!_isAppInBackground) tick.value = DateTime.now();
     });
     _saveTimer = Timer.periodic(const Duration(seconds: 10), (_) {
       if (!_isAppInBackground) _saveSession();
@@ -102,8 +108,8 @@ class RunSessionController extends ChangeNotifier {
   }
 
   void _stopTimers() {
-    _timer?.cancel();
-    _timer = null;
+    _tickTimer?.cancel();
+    _tickTimer = null;
     _saveTimer?.cancel();
     _saveTimer = null;
   }
@@ -259,6 +265,7 @@ class RunSessionController extends ChangeNotifier {
   @override
   void dispose() {
     _stopTimers();
+    tick.dispose();
     final speaker = _ttsSpeaker;
     _ttsSpeaker = null;
     if (speaker != null) {

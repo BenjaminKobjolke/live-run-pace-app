@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:vibration/vibration.dart';
 import '../models/app_settings.dart';
 import '../models/gesture_action.dart';
+import '../models/run_screen_layout.dart';
 import '../models/running_session.dart';
 import '../models/tts_settings.dart';
-import '../widgets/run_stats_view.dart';
 import '../widgets/paused_overlay.dart';
-import '../widgets/run_controls.dart';
-import '../widgets/run_header.dart';
+import '../widgets/run_screen_callbacks.dart';
+import '../widgets/run_screen_pager.dart';
 import '../widgets/confirm_dialog.dart';
 import 'run_session_controller.dart';
 import 'completion_screen.dart';
@@ -16,16 +16,19 @@ import 'home_screen.dart';
 
 /// Live run screen. A thin presenter: session state and its side-effects live in
 /// [RunSessionController]; this widget owns only presentation concerns (screen
-/// flash, vibration, button debounce), gestures, and navigation.
+/// flash, vibration, button debounce), gestures, and navigation. The visible
+/// content is the user-configured [RunScreenPager].
 class MainScreen extends StatefulWidget {
   final AppSettings settings;
   final TtsSettings ttsSettings;
+  final RunScreenLayouts layouts;
   final RunningSession? existingSession;
 
   const MainScreen({
     super.key,
     required this.settings,
     required this.ttsSettings,
+    required this.layouts,
     this.existingSession,
   });
 
@@ -179,44 +182,40 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         listenable: _controller,
         builder: (context, _) {
           final session = _controller.session;
+          final callbacks = RunScreenCallbacks(
+            onNext: _onNext,
+            onPrevious: _onPrevious,
+            onAbort: _showAbortConfirmation,
+            buttonsEnabled: _buttonsEnabled,
+            canGoPrevious: session.currentKm > 1,
+            isLastKilometer: session.isLastKilometer,
+          );
           return Stack(
             children: [
               SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    children: [
-                      RunHeader(onAbort: _showAbortConfirmation),
-
-                      // Main content area doubles as a gesture surface for AIMP
-                      // control, double-tap km completion, and long-press pause.
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: _gestureCallback(
-                            widget.ttsSettings.singleTapAction,
-                          ),
-                          onDoubleTap: _gestureCallback(
-                            widget.ttsSettings.doubleTapAction,
-                          ),
-                          onLongPress: _gestureCallback(
-                            widget.ttsSettings.longPressAction,
-                          ),
-                          behavior: HitTestBehavior.opaque,
-                          child: RunStatsView(session: session),
-                        ),
-                      ),
-
-                      // Buttons sit outside the gesture surface so they work normally.
-                      RunControls(
-                        enabled: _buttonsEnabled,
-                        canGoPrevious: session.currentKm > 1,
-                        isLastKilometer: session.isLastKilometer,
-                        onPrevious: _onPrevious,
-                        onNext: _onNext,
-                      ),
-
-                      const SizedBox(height: 16),
-                    ],
+                  // The whole page area is a gesture surface (AIMP control,
+                  // km completion, pause, ...). The pager's horizontal drags
+                  // and the tiles' buttons win their gesture arenas, so all
+                  // three input styles coexist.
+                  child: GestureDetector(
+                    onTap: _gestureCallback(
+                      widget.ttsSettings.singleTapAction,
+                    ),
+                    onDoubleTap: _gestureCallback(
+                      widget.ttsSettings.doubleTapAction,
+                    ),
+                    onLongPress: _gestureCallback(
+                      widget.ttsSettings.longPressAction,
+                    ),
+                    behavior: HitTestBehavior.opaque,
+                    child: RunScreenPager(
+                      layouts: widget.layouts,
+                      session: session,
+                      callbacks: callbacks,
+                      tick: _controller.tick,
+                    ),
                   ),
                 ),
               ),

@@ -1,20 +1,33 @@
-import 'dart:convert';
+﻿import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/app_settings.dart';
+import '../models/run_screen_layout.dart';
 import '../models/running_session.dart';
 import '../models/tts_settings.dart';
 import '../models/distance_history.dart';
 
-class StorageService {
-  static const String _settingsKey = 'app_settings';
-  static const String _ttsSettingsKey = 'tts_settings';
-  static const String _activeSessionKey = 'active_session';
-  static const String _sessionHistoryKey = 'session_history';
-  static const String _distanceHistoryKey = 'distance_history';
+/// The SharedPreferences keys used by [StorageService]. Public so the
+/// settings export/import envelope reuses the exact same names.
+class StorageKeys {
+  StorageKeys._();
 
+  static const String appSettings = 'app_settings';
+  static const String ttsSettings = 'tts_settings';
+  static const String activeSession = 'active_session';
+  static const String sessionHistory = 'session_history';
+  static const String distanceHistory = 'distance_history';
+  static const String screenLayouts = 'screen_layouts';
+}
+
+class StorageService {
   static StorageService? _instance;
   static StorageService get instance => _instance ??= StorageService._();
   StorageService._();
+
+  /// Test-only: drops the singleton so a fresh SharedPreferences mock applies.
+  @visibleForTesting
+  static void resetInstance() => _instance = null;
 
   SharedPreferences? _prefs;
 
@@ -24,7 +37,7 @@ class StorageService {
 
   Future<AppSettings> loadSettings() async {
     await init();
-    final settingsJson = _prefs!.getString(_settingsKey);
+    final settingsJson = _prefs!.getString(StorageKeys.appSettings);
     if (settingsJson == null) {
       return const AppSettings();
     }
@@ -39,12 +52,12 @@ class StorageService {
   Future<void> saveSettings(AppSettings settings) async {
     await init();
     final settingsJson = jsonEncode(settings.toJson());
-    await _prefs!.setString(_settingsKey, settingsJson);
+    await _prefs!.setString(StorageKeys.appSettings, settingsJson);
   }
 
   Future<TtsSettings> loadTtsSettings() async {
     await init();
-    final settingsJson = _prefs!.getString(_ttsSettingsKey);
+    final settingsJson = _prefs!.getString(StorageKeys.ttsSettings);
     if (settingsJson == null) {
       return const TtsSettings();
     }
@@ -59,12 +72,12 @@ class StorageService {
   Future<void> saveTtsSettings(TtsSettings settings) async {
     await init();
     final settingsJson = jsonEncode(settings.toJson());
-    await _prefs!.setString(_ttsSettingsKey, settingsJson);
+    await _prefs!.setString(StorageKeys.ttsSettings, settingsJson);
   }
 
   Future<RunningSession?> loadActiveSession() async {
     await init();
-    final sessionJson = _prefs!.getString(_activeSessionKey);
+    final sessionJson = _prefs!.getString(StorageKeys.activeSession);
     if (sessionJson == null) return null;
 
     try {
@@ -78,17 +91,17 @@ class StorageService {
   Future<void> saveActiveSession(RunningSession session) async {
     await init();
     final sessionJson = jsonEncode(session.toJson());
-    await _prefs!.setString(_activeSessionKey, sessionJson);
+    await _prefs!.setString(StorageKeys.activeSession, sessionJson);
   }
 
   Future<void> clearActiveSession() async {
     await init();
-    await _prefs!.remove(_activeSessionKey);
+    await _prefs!.remove(StorageKeys.activeSession);
   }
 
   Future<List<RunningSession>> loadSessionHistory() async {
     await init();
-    final historyJson = _prefs!.getString(_sessionHistoryKey);
+    final historyJson = _prefs!.getString(StorageKeys.sessionHistory);
     if (historyJson == null) return [];
 
     try {
@@ -107,7 +120,7 @@ class StorageService {
     history.add(session);
 
     final historyJson = jsonEncode(history.map((s) => s.toJson()).toList());
-    await _prefs!.setString(_sessionHistoryKey, historyJson);
+    await _prefs!.setString(StorageKeys.sessionHistory, historyJson);
   }
 
   Future<void> deleteSession(String sessionId) async {
@@ -116,12 +129,12 @@ class StorageService {
     history.removeWhere((session) => session.id == sessionId);
 
     final historyJson = jsonEncode(history.map((s) => s.toJson()).toList());
-    await _prefs!.setString(_sessionHistoryKey, historyJson);
+    await _prefs!.setString(StorageKeys.sessionHistory, historyJson);
   }
 
   Future<DistanceHistory> loadDistanceHistory() async {
     await init();
-    final historyJson = _prefs!.getString(_distanceHistoryKey);
+    final historyJson = _prefs!.getString(StorageKeys.distanceHistory);
     if (historyJson == null) return const DistanceHistory();
 
     try {
@@ -135,7 +148,7 @@ class StorageService {
   Future<void> saveDistanceHistory(DistanceHistory history) async {
     await init();
     final historyJson = jsonEncode(history.toJson());
-    await _prefs!.setString(_distanceHistoryKey, historyJson);
+    await _prefs!.setString(StorageKeys.distanceHistory, historyJson);
   }
 
   Future<void> addDistanceToHistory(double distance) async {
@@ -147,6 +160,30 @@ class StorageService {
   Future<List<double>> getDistanceSuggestions({int limit = 8}) async {
     final history = await loadDistanceHistory();
     return history.getSuggestions(limit: limit);
+  }
+
+  /// Loads the configured run screens; a missing, corrupt, or empty
+  /// configuration falls back to [RunScreenLayouts.defaults].
+  Future<RunScreenLayouts> loadScreenLayouts() async {
+    await init();
+    final layoutsJson = _prefs!.getString(StorageKeys.screenLayouts);
+    if (layoutsJson == null) return RunScreenLayouts.defaults();
+
+    try {
+      final json = jsonDecode(layoutsJson) as Map<String, dynamic>;
+      final layouts = RunScreenLayouts.fromJson(json);
+      return layouts.screens.isEmpty ? RunScreenLayouts.defaults() : layouts;
+    } catch (e) {
+      return RunScreenLayouts.defaults();
+    }
+  }
+
+  Future<void> saveScreenLayouts(RunScreenLayouts layouts) async {
+    await init();
+    await _prefs!.setString(
+      StorageKeys.screenLayouts,
+      jsonEncode(layouts.toJson()),
+    );
   }
 
   Future<void> clearAllData() async {

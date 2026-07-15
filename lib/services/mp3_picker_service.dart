@@ -1,9 +1,8 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'package:file_picker/file_picker.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:device_info_plus/device_info_plus.dart';
 import '../models/mp3_pick_result.dart';
 import 'app_logger.dart';
+import 'storage_permission.dart';
 
 /// Picks and scans audio files, handling Android-version-specific permission
 /// and file-picker quirks. UI-free so it can be tested and reused; callers map
@@ -13,9 +12,9 @@ class Mp3PickerService {
 
   /// Picks one or more audio files, skipping any already in [existingPaths].
   Future<Mp3PickResult> pickFiles(List<String> existingPaths) async {
-    final androidVersion = await _androidVersion();
+    final androidVersion = await androidSdkInt();
     try {
-      final permission = await _getStoragePermission();
+      final permission = await storagePermissionForDevice(audio: true);
       AppLogger.d('Using permission: $permission');
       final status = await permission.request();
       AppLogger.d('Permission status: $status');
@@ -65,9 +64,9 @@ class Mp3PickerService {
   /// Picks a folder, recursively scans it for audio files, and returns those not
   /// already in [existingPaths].
   Future<Mp3PickResult> pickFolder(List<String> existingPaths) async {
-    final androidVersion = await _androidVersion();
+    final androidVersion = await androidSdkInt();
     try {
-      final permission = await _getStoragePermission();
+      final permission = await storagePermissionForDevice(audio: true);
       AppLogger.d('Using permission: $permission');
       final status = await permission.request();
       AppLogger.d('Permission status: $status');
@@ -116,9 +115,9 @@ class Mp3PickerService {
     String folderPath,
     List<String> existingPaths,
   ) async {
-    final androidVersion = await _androidVersion();
+    final androidVersion = await androidSdkInt();
     try {
-      final permission = await _getStoragePermission();
+      final permission = await storagePermissionForDevice(audio: true);
       final status = await permission.request();
       if (status.isPermanentlyDenied) {
         return Mp3PickResult(
@@ -183,14 +182,6 @@ class Mp3PickerService {
     );
   }
 
-  Future<int> _androidVersion() async {
-    if (!Platform.isAndroid) return 0;
-    final androidInfo = await DeviceInfoPlugin().androidInfo;
-    final v = androidInfo.version.sdkInt;
-    AppLogger.d('Android SDK version: $v');
-    return v;
-  }
-
   Future<FilePickerResult?> _pickFilesForVersion(int androidVersion) async {
     FilePickerResult? result;
 
@@ -250,17 +241,5 @@ class Mp3PickerService {
       AppLogger.e('Error scanning directory', error: e);
     }
     return audioFiles;
-  }
-
-  Future<Permission> _getStoragePermission() async {
-    if (!Platform.isAndroid) return Permission.storage;
-    final sdkInt = (await DeviceInfoPlugin().androidInfo).version.sdkInt;
-    if (sdkInt >= 33) {
-      // Android 13+ (API 33+) - granular media permissions.
-      AppLogger.d('Using Permission.audio for Android $sdkInt');
-      return Permission.audio;
-    }
-    AppLogger.d('Using Permission.storage for Android $sdkInt');
-    return Permission.storage;
   }
 }

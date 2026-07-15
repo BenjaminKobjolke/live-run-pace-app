@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:permission_handler/permission_handler.dart';
 import '../models/gesture_action.dart';
 import '../models/mp3_pick_result.dart';
 import '../models/tts_settings.dart';
 import '../services/app_logger.dart';
 import '../services/mp3_picker_service.dart';
+import '../services/storage_service.dart';
 import '../services/tts_speaker.dart';
-import '../widgets/confirm_dialog.dart';
+import '../widgets/backup_settings_tab.dart';
 import '../widgets/gesture_settings_tab.dart';
-import '../widgets/info_dialog.dart';
+import '../widgets/mp3_pick_result_handler.dart';
 import '../widgets/mp3_settings_tab.dart';
+import '../widgets/screens_settings_tab.dart';
 import '../widgets/tts_settings_tab.dart';
 
-/// Settings screen for TTS, audio, and gesture options.
+/// Settings screen for TTS, audio, gesture, run-screen and backup options.
 class SettingsScreen extends StatefulWidget {
   /// The settings to edit; a modified copy is returned via `Navigator.pop`.
   final TtsSettings currentSettings;
@@ -114,73 +115,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (isFolder && result.folderPath != null) {
       _mp3FolderPath = result.folderPath;
     }
-    switch (result.status) {
-      case Mp3PickStatus.added:
-        if (result.paths.isNotEmpty) {
-          setState(() => _mp3FilePaths.addAll(result.paths));
-        }
-        break;
-      case Mp3PickStatus.cancelled:
-        break;
-      case Mp3PickStatus.permissionDenied:
-        await showInfoDialog(
-          context,
-          title: 'Permission Required',
-          message:
-              'Storage permission is required to select MP3 files. Please grant permission and try again.',
-        );
-        break;
-      case Mp3PickStatus.permissionPermanentlyDenied:
-        final openSettings = await showConfirmDialog(
-          context,
-          title: 'Permission Denied',
-          message:
-              'Storage permission has been permanently denied. Please enable it in app settings to select MP3 files.',
-          confirmLabel: 'Settings',
-        );
-        if (openSettings) openAppSettings();
-        break;
-      case Mp3PickStatus.emptyFolder:
-        await showInfoDialog(
-          context,
-          title: 'No Audio Files Found',
-          message:
-              'The selected folder does not contain any audio files (MP3, WAV, M4A).',
-        );
-        break;
-      case Mp3PickStatus.noNewFiles:
-        await showInfoDialog(
-          context,
-          title: 'No New Files Added',
-          message:
-              'All ${result.totalFound} audio files from the selected folder are already in your list.',
-        );
-        break;
-      case Mp3PickStatus.error:
-        await showInfoDialog(
-          context,
-          title: isFolder ? 'Folder Selection Error' : 'File Selection Error',
-          message: _pickerErrorMessage(result, isFolder: isFolder),
-        );
-        break;
+    if (result.status == Mp3PickStatus.added && result.paths.isNotEmpty) {
+      setState(() => _mp3FilePaths.addAll(result.paths));
+      return;
     }
+    await showMp3PickResultDialogs(context, result, isFolder: isFolder);
   }
 
-  String _pickerErrorMessage(Mp3PickResult result, {required bool isFolder}) {
-    final what = isFolder ? 'folder' : 'file';
-    if (result.androidVersion != 0 && result.androidVersion <= 28) {
-      final alternative = isFolder
-          ? 'You can also manually select individual files instead.'
-          : 'You can also manually copy MP3 files to Downloads folder.';
-      return '${isFolder ? 'Folder' : 'File'} picker issue on Android ${result.androidVersion}. Please try:\n\n'
-          '1. Go to Android Settings → Apps → Live Run Pace → Permissions\n'
-          '2. Enable "Storage" permission\n'
-          '3. Restart the app and try again\n\n$alternative';
-    }
-    if (result.errorDetails != null) {
-      return 'Unable to open $what picker.\n\nError: ${result.errorDetails}';
-    }
-    return 'Unable to open $what picker.';
+  /// A successful import replaced everything in storage; close the screen
+  /// with the imported TTS settings so no stale draft can overwrite them.
+  Future<void> _onImported() async {
+    final imported = await StorageService.instance.loadTtsSettings();
+    if (mounted) Navigator.of(context).pop(imported);
   }
 
   void _save() {
@@ -205,7 +151,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 5,
       child: Scaffold(
         backgroundColor: Colors.black,
         appBar: AppBar(
@@ -219,6 +165,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ],
           bottom: const TabBar(
+            isScrollable: true, // five tabs don't fit a 240px-wide screen
             indicatorColor: Colors.white,
             labelColor: Colors.white,
             unselectedLabelColor: Colors.white54,
@@ -226,11 +173,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Tab(text: 'TTS'),
               Tab(text: 'Gestures'),
               Tab(text: 'MP3'),
+              Tab(text: 'Screens'),
+              Tab(text: 'Backup'),
             ],
           ),
         ),
         body: TabBarView(
-          children: [_buildTtsTab(), _buildGesturesTab(), _buildMp3Tab()],
+          children: [
+            _buildTtsTab(),
+            _buildGesturesTab(),
+            _buildMp3Tab(),
+            const ScreensSettingsTab(),
+            BackupSettingsTab(onImported: _onImported),
+          ],
         ),
       ),
     );

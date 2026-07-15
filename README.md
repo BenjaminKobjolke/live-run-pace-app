@@ -11,6 +11,8 @@ A Flutter app designed for runners to track their pace and kilometer targets dur
 - **Visual Feedback**: Color-coded time display (green = on pace, red = behind)
 
 ### 📱 User Experience
+- **Configurable Run Screens**: Build your own swipeable dashboard — place stat and button widgets on a grid, set sizes and colors per widget (Settings → Screens, see `docs/SCREEN_LAYOUTS.md`)
+- **Settings Backup**: Export/import all settings to a JSON file (Settings → Backup, see `docs/IMPORT_EXPORT.md`)
 - **Persistent Storage**: Settings and active sessions saved automatically
 - **Session Recovery**: Resume interrupted runs if app closes
 - **Multi-modal Feedback**: Visual flash + vibration + voice announcements
@@ -36,7 +38,7 @@ When you reach each kilometer, the app announces:
 
 ### ⚙️ Technical Features
 - **Auto-save**: Progress saved every 10 seconds
-- **Battery Optimized**: UI updates every 10 seconds (not every second)
+- **Battery Optimized**: only time widgets on the visible screen update every second (1s tick event); everything else repaints only on kilometer changes
 - **Offline**: No internet required during runs
 - **Cross-platform**: Android and Web support
 
@@ -89,6 +91,18 @@ Access detailed configuration via the settings gear icon:
 - Assign an action to each gesture — single tap / double tap / long press
 - Actions: None, Toggle AIMP, Complete km, Previous km, Pause, Abort
 - Auto-resume AIMP after TTS announcements
+
+**Run Screens (Settings → Screens):**
+- Multiple swipeable screens during a run, each a 6×2 grid of widgets
+- WYSIWYG editor: the screen is shown as it will look — tap an empty cell to add a widget, tap a widget to edit it, with a live preview while adjusting sizes and colors
+- Widgets: segment distance, elapsed time, next target, time left, finish time, current/average pace, GOT IT!/back/abort buttons
+- Per widget: grid position and span, label text, label/value sizes and colors
+- Time left: auto green/red status colors (default) or a custom color pair
+- Full-screen color picker with clipboard Copy/Paste to reuse colors
+
+**Backup (Settings → Backup):**
+- Export all settings (paces, TTS, gestures, MP3 list, run screens) to a JSON file
+- Import them back — versioned, forward-tolerant format
 
 **Android Compatibility:**
 - Android 5.0+ support with version-specific optimizations
@@ -163,19 +177,23 @@ lib/
 ├── models/                # Data models
 │   ├── app_settings.dart  # Distance/pace settings
 │   ├── running_session.dart # Session tracking
+│   ├── run_screen_layout.dart # Configurable run screens (grid widgets)
 │   └── tts_settings.dart  # Audio/TTS configuration
 ├── screens/               # UI screens
 │   ├── start_screen.dart  # Initial setup
-│   ├── main_screen.dart   # Running interface
+│   ├── main_screen.dart   # Running interface (swipeable widget screens)
+│   ├── settings_screen.dart # 5-tab settings (TTS/Gestures/MP3/Screens/Backup)
 │   ├── distance_input_screen.dart # Full-screen distance keypad
 │   ├── pace_input_screen.dart     # Full-screen pace keypad
 │   └── completion_screen.dart # Results
 ├── services/              # Business logic
 │   ├── storage_service.dart # Data persistence
+│   ├── settings_transfer_service.dart # Settings JSON export/import
+│   ├── run_widget_values.dart / run_widget_style.dart # Widget value/style resolution
 │   └── tts_speaker.dart   # Audio/TTS management
 └── widgets/               # Reusable components
-    ├── digit_keypad.dart  # On-screen numeric keypad
-    └── tts_settings_dialog.dart # Audio settings UI
+    ├── run_screen_pager.dart / run_screen_grid.dart # Run dashboard rendering
+    └── digit_keypad.dart  # On-screen numeric keypad
 ```
 
 ### Build Scripts

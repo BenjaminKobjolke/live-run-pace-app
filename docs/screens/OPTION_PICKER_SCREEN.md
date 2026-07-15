@@ -22,6 +22,8 @@ Push with a typed route: `Navigator.push<T>(MaterialPageRoute(...))`.
   and previous-distances picker (`double` values from
   `StorageService.getDistanceSuggestions`).
 - [Pace Input Screen](PACE_INPUT_SCREEN.md) — unit picker (`km`/`mile`).
+- [Widget Editor Screen](WIDGET_EDITOR_SCREEN.md) — widget type and the four
+  placement fields (row/column/spans as `int` options).
 
 ## Layout
 

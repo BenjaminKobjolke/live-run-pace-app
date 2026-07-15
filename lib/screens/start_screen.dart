@@ -53,8 +53,12 @@ class _StartScreenState extends State<StartScreen> {
     );
 
     if (newSettings != null) {
+      // A settings import may also have replaced the app settings — reload
+      // them so distance/paces reflect the imported values.
+      final settings = await StorageService.instance.loadSettings();
       setState(() {
         _ttsSettings = newSettings;
+        _settings = settings;
       });
       await _saveTtsSettings();
     }
@@ -116,11 +120,16 @@ class _StartScreenState extends State<StartScreen> {
     }
   }
 
-  void _startSession() {
+  Future<void> _startSession() async {
+    final layouts = await StorageService.instance.loadScreenLayouts();
+    if (!mounted) return;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
-        builder: (context) =>
-            MainScreen(settings: _settings, ttsSettings: _ttsSettings),
+        builder: (context) => MainScreen(
+          settings: _settings,
+          ttsSettings: _ttsSettings,
+          layouts: layouts,
+        ),
       ),
     );
   }

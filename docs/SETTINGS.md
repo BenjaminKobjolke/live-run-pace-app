@@ -1,19 +1,25 @@
 # Settings Screen
 
-Full-screen settings page. Configures TTS, audio behavior, gestures, and post-TTS
-MP3 playback.
+Full-screen settings page. Configures TTS, audio behavior, gestures, post-TTS
+MP3 playback, the configurable run screens, and settings backup.
 
-The controls are split across **three swipeable tabs** (`TabBar` + `TabBarView`
-under a `DefaultTabController` in `settings_screen.dart`) — swipe left/right or tap
-a tab:
+The controls are split across **five swipeable tabs** (`TabBar` with
+`isScrollable: true` — five fixed tabs would not fit 240 px — + `TabBarView`
+under a `DefaultTabController` in `settings_screen.dart`):
 
 | Tab | Contents |
 |-----|----------|
 | **TTS** | TTS Enabled, Speed, Volume, Delay after audio, Pause other apps audio, Resume AIMP after playback, **Test Voice** — see [screens/TTS_SETTINGS_TAB.md](screens/TTS_SETTINGS_TAB.md) |
 | **Gestures** | Single tap / Double tap / Long press → action dropdowns, Delay button navigation — see [screens/GESTURE_SETTINGS_TAB.md](screens/GESTURE_SETTINGS_TAB.md) |
 | **MP3** | The MP3 file list (with per-file preview playback) + Add Files / Add Folder / **Refresh Folder** — see [screens/MP3_SETTINGS_TAB.md](screens/MP3_SETTINGS_TAB.md) |
+| **Screens** | The configurable run screens (widgets, placement, colors) — see [screens/SCREENS_SETTINGS_TAB.md](screens/SCREENS_SETTINGS_TAB.md) and [SCREEN_LAYOUTS.md](SCREEN_LAYOUTS.md) |
+| **Backup** | Export / import all settings to a JSON file — see [screens/BACKUP_SETTINGS_TAB.md](screens/BACKUP_SETTINGS_TAB.md) and [IMPORT_EXPORT.md](IMPORT_EXPORT.md) |
 
-The single **Save** action lives in the AppBar and applies across all tabs.
+The **Save** action in the AppBar applies to the TTS/Gestures/MP3 draft
+(`TtsSettings`). The Screens tab persists its layouts **immediately** on every
+change (`screen_layouts` key) — it is independent of Save. A successful
+import in the Backup tab pops the whole settings screen with the imported
+`TtsSettings` so the open draft cannot overwrite it.
 
 ## Files
 
@@ -28,9 +34,18 @@ The single **Save** action lives in the AppBar and applies across all tabs.
 | `lib/widgets/tts_settings_tab.dart` | `TtsSettingsTab` — TTS controls, audio focus switches, and Test Voice button. |
 | `lib/widgets/gesture_settings_tab.dart` | `GestureSettingsTab` — per-gesture action dropdowns and navigation delay switch. |
 | `lib/widgets/mp3_file_list.dart` | `Mp3FileList` — the selected-files list (preview / remove / Clear All); owns a preview `AudioPlayer`. |
-| `lib/widgets/setting_controls.dart` | `SettingSwitch` / `SettingSlider` / `SettingDropdown<T>` — reusable labeled rows. |
+| `lib/widgets/setting_controls.dart` | `SettingSwitch` / `SettingSlider` / `SettingDropdown<T>` / `ColorSettingRow` — reusable labeled rows. |
+| `lib/widgets/mp3_pick_result_handler.dart` | `showMp3PickResultDialogs` — maps `Mp3PickResult` failure statuses to dialogs. |
+| `lib/widgets/screens_settings_tab.dart` | `ScreensSettingsTab` — run-screen list (self-persisting). |
+| `lib/screens/screen_editor_screen.dart`, `lib/widgets/editable_screen_grid.dart` | WYSIWYG screen editor + its tap-to-edit canvas. |
+| `lib/screens/widget_editor_screen.dart`, `lib/screens/color_picker_screen.dart` | Widget property form (with live tile preview) and the full-screen color picker. |
+| `lib/screens/number_picker_screen.dart`, `lib/widgets/picker_bottom_bar.dart` | Full-screen slide-up/down number picker (sizes) + shared Cancel/OK bar. |
+| `lib/utils/demo_session.dart` | Frozen demo `RunningSession` feeding the editor previews (and the test suites). |
+| `lib/widgets/backup_settings_tab.dart` | `BackupSettingsTab` — export/import buttons + dialog mapping. |
+| `lib/services/settings_transfer_service.dart` | `SettingsTransferService` — settings export/import (see [IMPORT_EXPORT.md](IMPORT_EXPORT.md)). |
+| `lib/services/storage_permission.dart` | Shared Android storage-permission cascade (`androidSdkInt`, `storagePermissionForDevice`) used by the MP3 picker and the import. |
 | `lib/widgets/confirm_dialog.dart`, `info_dialog.dart` | Shared `showConfirmDialog` / `showInfoDialog` helpers. |
-| `lib/services/storage_service.dart` | Persists to `SharedPreferences` under key `tts_settings`. |
+| `lib/services/storage_service.dart` | Persists to `SharedPreferences` (`StorageKeys`: `tts_settings`, `screen_layouts`, …). |
 | `lib/screens/start_screen.dart` | Opens the screen (gear icon) and owns persistence. |
 | `lib/services/tts_speaker.dart` | Consumes the settings at runtime. |
 

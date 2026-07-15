@@ -1,6 +1,6 @@
 # Gesture Settings Tab
 
-Second tab of the full-screen [Settings screen](../SETTINGS.md) (`TTS | Gestures | MP3`).
+Second tab of the full-screen [Settings screen](../SETTINGS.md) (`TTS | Gestures | MP3 | Screens | Backup`).
 Assigns an action to each of the three main-screen run gestures, and toggles the
 button-navigation debounce.
 
@@ -37,6 +37,10 @@ resolution, debounce gating, `none` disabling the gesture — is documented in
 [SESSIONS.md → Gestures](../SESSIONS.md#gestures-main-screen) and
 [SETTINGS.md → Gesture actions](../SETTINGS.md#gesture-actions); this tab only picks
 the assignment.
+
+Note: since the run buttons live inside the gesture surface (configurable run
+screens), assigning a **double tap** action makes button taps respond ~300 ms
+delayed — the gesture arena has to rule out a double tap first.
 
 **Migration:** the former `touchToToggleAimp` / `doubleTapToCompleteKm` booleans
 migrate into these fields on load — see

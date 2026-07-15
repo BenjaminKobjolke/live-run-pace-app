@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../screens/color_picker_screen.dart';
 
 /// A labeled on/off switch row used throughout the settings screen.
 class SettingSwitch extends StatelessWidget {
@@ -91,6 +92,105 @@ class SettingDropdown<T> extends StatelessWidget {
               .toList(),
         ),
       ],
+    );
+  }
+}
+
+/// A labeled color row: tapping the swatch opens the full-screen
+/// [ColorPickerScreen] and reports the picked color via [onChanged].
+class ColorSettingRow extends StatelessWidget {
+  final String label;
+  final Color value;
+
+  /// Receives the newly picked color.
+  final ValueChanged<Color> onChanged;
+
+  const ColorSettingRow({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+
+  Future<void> _pick(BuildContext context) async {
+    final picked = await Navigator.of(context).push<Color>(
+      MaterialPageRoute(
+        builder: (context) =>
+            ColorPickerScreen(title: label, initialColor: value),
+      ),
+    );
+    if (picked != null) onChanged(picked);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(color: Colors.white, fontSize: 16),
+          ),
+        ),
+        InkWell(
+          onTap: () => _pick(context),
+          child: Container(
+            width: 32,
+            height: 24,
+            decoration: BoxDecoration(
+              color: value,
+              border: Border.all(color: Colors.white30),
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// A labeled row that navigates to a fullscreen picker: current value text
+/// plus a chevron on the right; the caller's [onTap] pushes the picker and
+/// applies the result. Small-screen replacement for inline dropdowns/sliders.
+class SettingPickerRow extends StatelessWidget {
+  final String label;
+
+  /// Display text of the current value.
+  final String value;
+
+  /// Opens the fullscreen picker.
+  final VoidCallback onTap;
+
+  const SettingPickerRow({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(color: Colors.white, fontSize: 16),
+              ),
+            ),
+            Text(
+              value,
+              style: const TextStyle(color: Colors.white70, fontSize: 16),
+            ),
+            const Icon(Icons.chevron_right, color: Colors.white54, size: 20),
+          ],
+        ),
+      ),
     );
   }
 }

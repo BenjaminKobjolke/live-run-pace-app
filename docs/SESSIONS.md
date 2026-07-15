@@ -47,9 +47,15 @@ shared with the distance input and start screens.
    (`distance.ceil()`), `startTime = now`, save it as the active session, record the
    distance to history. Once TTS is up (`initTts`), a fresh session speaks
    "Session started." — a recovered one does not (it would re-announce).
-2. **Run / autosave** — two 10s `Timer.periodic` (`_startTimers`): one repaints the
-   UI, one autosaves the active session. Also saved immediately on every km change
-   (`_goToNextKm` / `_goToPreviousKm`).
+2. **Run / autosave** — two `Timer.periodic` (`_startTimers`): a **1s tick**
+   updating `RunSessionController.tick` (a `ValueNotifier<DateTime>` — the
+   time-tick event source; only run widgets whose type declares
+   `RunEvent.timeTick` listen and rebuild, and off-screen pages are never
+   built, see [SCREEN_LAYOUTS.md](SCREEN_LAYOUTS.md#widget-events)), and a
+   **10s autosave** of the active session. Both stop while paused or
+   backgrounded. Km/session changes repaint via `notifyListeners()` on the
+   actions themselves; the session is also saved immediately on every km
+   change (`goToNextKm` / `goToPreviousKm`).
 3. **Complete a km** — "GOT IT!" button or a gesture assigned the `completeKm` action →
    `_goToNextKm` stamps the current target's `completedAt` / `actualTime`, advances `currentKm`,
    fires feedback (flash + vibrate + TTS announcement), saves. The announcement text
@@ -64,13 +70,23 @@ shared with the distance input and start screens.
 5. **Abort** — the ✕ button → confirm dialog → `_abortSession`: set `isAborted`,
    push to history, clear the active session, return to `HomeScreen`.
 
+## Run screen UI
+
+The visible run UI is user-configurable: a swipeable `RunScreenPager` over
+grid-based screens of widgets (stat tiles + control buttons) — see
+[SCREEN_LAYOUTS.md](SCREEN_LAYOUTS.md). The default configuration replicates
+the former fixed layout. `MainScreen` builds a `RunScreenCallbacks` value
+object (next/previous/abort actions + button gating) each rebuild and hands
+it to the pager; `PausedOverlay` still covers everything while paused.
+
 ## Gestures (main screen)
 
-The main content area is one `GestureDetector` (`MainScreen.build`, wrapping the
-`RunStatsView` widget) carrying three gestures. They coexist — Flutter
-disambiguates by tap count / hold duration. The build is composed of extracted
-widgets: `RunHeader` (top bar + abort ✕), `RunStatsView` (live stats),
-`RunControls` (back / GOT IT–FINISH buttons), and `PausedOverlay`.
+The whole page area is one `GestureDetector` (`MainScreen.build`, wrapping the
+`RunScreenPager`) carrying three gestures. They coexist — Flutter
+disambiguates by tap count / hold duration; the pager's horizontal drags and
+the tiles' buttons win their own gesture arenas. Note: when a double-tap
+action is configured, button taps are recognized ~300 ms delayed (the arena
+waits to rule out a double tap).
 
 Each gesture's action is **user-configurable** in Settings → Gestures. The three
 gesture slots — `ttsSettings.singleTapAction`, `doubleTapAction`, `longPressAction`
@@ -90,7 +106,9 @@ handler by `_gestureCallback` in `MainScreen`. Returning `null` (for
 Defaults: single tap `none`, double tap `none`, long press `pause`. `completeKm` /
 `previousKm` route through the widget-level `_onNext` / `_onPrevious` so their dialogs,
 screen-flash, and vibration are preserved; `toggleAimp` / `pause` call the controller
-directly.
+directly. The same `_onNext` / `_onPrevious` / abort handlers back the
+configurable button widgets (via `RunScreenCallbacks`), so buttons and
+gestures always behave identically.
 
 `_buttonsEnabled` is briefly false (~1s) right after a km change when
 `ttsSettings.buttonNavigationDelay` is on, to avoid accidental double-advances; the

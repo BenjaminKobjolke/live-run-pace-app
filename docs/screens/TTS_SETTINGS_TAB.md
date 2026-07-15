@@ -1,6 +1,6 @@
 # TTS Settings Tab
 
-First tab of the full-screen [Settings screen](../SETTINGS.md) (`TTS | Gestures | MP3`).
+First tab of the full-screen [Settings screen](../SETTINGS.md) (`TTS | Gestures | MP3 | Screens | Backup`).
 Configures the voice announcements: on/off, speech rate/volume, audio-focus behavior,
 AIMP resumption, and the post-audio tail-drain delay — plus a Test Voice preview.
 

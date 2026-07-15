@@ -127,8 +127,8 @@ flutter doctor                     # Check Flutter installation
 - `toggleAimp`: Alternates between play/pause for AIMP music player
 - `resumeAimp`: Resumes AIMP after TTS announcements
 
-**Permission Handling**: Complex Android version-specific permission logic in `tts_settings_dialog.dart`:
-- Android 13+: Uses `Permission.audio`
+**Permission Handling**: Android version-specific permission logic centralized in `lib/services/storage_permission.dart` (used by the MP3 picker and settings import):
+- Android 13+: Uses `Permission.audio` for media; generic documents need no runtime permission (SAF)
 - Android 12-: Uses `Permission.storage`
 - Special handling for Android 8 file picker limitations
 
@@ -138,11 +138,13 @@ flutter doctor                     # Check Flutter installation
 
 **Small Screen Optimization**: Designed for 240x432 resolution with space-efficient layouts and gesture controls.
 
-**Gesture System**:
-- Single tap main screen: AIMP play/pause toggle
-- Double tap main screen: Mark kilometer completion (alternative to "GOT IT!" button)
+**Configurable Run Screens**: The run UI is a swipeable `RunScreenPager` over user-configured screens — widgets (stat tiles + control buttons) placed on a fixed 6×2 grid with per-widget sizes/colors; cell sizes scale as fractions of the available space. Configured in Settings → Screens, persisted under the `screen_layouts` key, defaults replicate the legacy fixed layout. See `docs/SCREEN_LAYOUTS.md` (including the checklist for adding new widget types) and `docs/screens/session/widgets/`.
 
-**Color-Coded Feedback**: Green/red time displays based on pace status with synchronized visual flash and vibration.
+**Gesture System**: Each gesture (single tap / double tap / long press) has a user-assigned action; the whole page area is the gesture surface, coexisting with page swipes and widget buttons.
+
+**Color-Coded Feedback**: The time-left widget colors by pace status — auto green/red by default, or a user-configured on-schedule/behind color pair; all widget styling resolves through `lib/services/run_widget_style.dart` (future theme seam). Synchronized visual flash and vibration on km completion.
+
+**Settings Import/Export**: Settings → Backup writes/reads a versioned JSON envelope of all settings keys — see `docs/IMPORT_EXPORT.md`.
 
 ### Audio Workflow
 
