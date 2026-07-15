@@ -33,6 +33,7 @@ class RunSessionController extends ChangeNotifier {
   Timer? _saveTimer;
   TtsSpeaker? _ttsSpeaker;
   bool _isAppInBackground = false;
+  bool _isNewSession = false;
 
   /// Creates the controller and immediately initialises the session (recovering
   /// [existingSession] or starting a fresh run from [settings]) and its timers.
@@ -56,6 +57,8 @@ class RunSessionController extends ChangeNotifier {
     _ttsSpeaker = TtsSpeaker(ttsSettings);
     try {
       await _ttsSpeaker!.init();
+      // Only a fresh run announces its start; recovery would re-announce.
+      if (_isNewSession) _ttsSpeaker?.speak('Session started.');
     } catch (e) {
       AppLogger.e('TTS Speaker initialization failed', error: e);
       _ttsSpeaker = null;
@@ -67,6 +70,8 @@ class RunSessionController extends ChangeNotifier {
       _session = existingSession; // may be recovered mid-pause
       return;
     }
+
+    _isNewSession = true;
 
     final targets = List.generate(
       settings.distance.ceil(),
@@ -204,6 +209,11 @@ class RunSessionController extends ChangeNotifier {
     );
     StorageService.instance.saveSessionToHistory(completed);
     StorageService.instance.clearActiveSession();
+    // Detach the speaker: the caller navigates away immediately, disposing this
+    // controller — the speech must outlive it, then clean itself up.
+    final speaker = _ttsSpeaker;
+    _ttsSpeaker = null;
+    speaker?.speak('Session complete.').whenComplete(speaker.dispose);
     return completed;
   }
 

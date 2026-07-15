@@ -42,9 +42,11 @@ shared with the distance input and start screens.
 
 ## Lifecycle
 
-1. **Create** — `MainScreen._initializeSession`. If no `existingSession` is passed,
-   build a fresh `RunningSession` with one `KilometerTarget` per km (`distance.ceil()`),
-   `startTime = now`, save it as the active session, record the distance to history.
+1. **Create** — `RunSessionController._initializeSession`. If no `existingSession` is
+   passed, build a fresh `RunningSession` with one `KilometerTarget` per km
+   (`distance.ceil()`), `startTime = now`, save it as the active session, record the
+   distance to history. Once TTS is up (`initTts`), a fresh session speaks
+   "Session started." — a recovered one does not (it would re-announce).
 2. **Run / autosave** — two 10s `Timer.periodic` (`_startTimers`): one repaints the
    UI, one autosaves the active session. Also saved immediately on every km change
    (`_goToNextKm` / `_goToPreviousKm`).
@@ -54,8 +56,11 @@ shared with the distance input and start screens.
    is built by `AnnouncementBuilder.build(session)` (`lib/services/announcement_builder.dart`,
    pure + unit-tested) and spoken with `playMp3: true` so the post-TTS MP3 plays.
 4. **Finish** — on the last km the button becomes "FINISH!" → confirm dialog →
-   `_finishSession`: stamp final target, set `isCompleted`, push to history, clear
-   the active session, go to `CompletionScreen`.
+   `finishSession`: stamp final target, set `isCompleted`, push to history, clear
+   the active session, speak "Session complete.", go to `CompletionScreen`. The
+   `TtsSpeaker` is detached from the controller before speaking so the speech
+   survives the immediate navigation (controller disposal would otherwise cut it
+   off); the speak future disposes the speaker when done. Abort stays silent.
 5. **Abort** — the ✕ button → confirm dialog → `_abortSession`: set `isAborted`,
    push to history, clear the active session, return to `HomeScreen`.
 
