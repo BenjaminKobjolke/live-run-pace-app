@@ -36,9 +36,10 @@ handling, etc.) — the keypad only reports taps.
 
 ## Consumers
 
-- [Distance Input Screen](../screens/DISTANCE_INPUT_SCREEN.md) — `allowDecimal: true`.
-- [Pace Input Screen](../screens/PACE_INPUT_SCREEN.md) — `allowDecimal: false`
-  (integer minutes/seconds).
+- `DistanceKeypadScreen` (see [Distance Input Screen](../screens/DISTANCE_INPUT_SCREEN.md))
+  — `allowDecimal: true`.
+- `PaceKeypadScreen` (see [Pace Input Screen](../screens/PACE_INPUT_SCREEN.md))
+  — `allowDecimal: false` (integer minutes/seconds).
 
 ## Tests
 

@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import '../services/storage_service.dart';
 import '../utils/distance_format.dart';
-import '../widgets/digit_keypad.dart';
+import '../widgets/input_actions.dart';
+import '../widgets/menu_button.dart';
+import '../widgets/value_display.dart';
+import 'distance_keypad_screen.dart';
+import 'option_picker_screen.dart';
 
-/// Full-screen distance editor driven by an on-screen [DigitKeypad] instead of
-/// the OS keyboard. Pops the entered distance in **kilometres** (`double`), or
-/// `null` on cancel. Keeps the unit selector (m/km/mi) and the "Frequently
-/// Used" suggestion chips from the previous dialog.
+/// Compact distance editor for the small target screen. Shows the current
+/// value, a unit button and a previous-distances button; tapping the value
+/// opens [DistanceKeypadScreen] for editing. Pops the entered distance in
+/// **kilometres** (`double`), or `null` on cancel.
 class DistanceInputScreen extends StatefulWidget {
   /// Current distance in kilometres, shown when the screen opens.
   final double currentDistance;
@@ -32,17 +36,19 @@ class _DistanceInputScreenState extends State<DistanceInputScreen> {
   }
 
   Future<void> _loadSuggestions() async {
+    List<double> suggestions = [];
     try {
-      final suggestions = await StorageService.instance.getDistanceSuggestions(
+      suggestions = await StorageService.instance.getDistanceSuggestions(
         limit: 6,
       );
-      setState(() {
-        _suggestions = suggestions;
-        _isLoading = false;
-      });
     } catch (e) {
-      setState(() => _isLoading = false);
+      // keep empty suggestions on failure
     }
+    if (!mounted) return;
+    setState(() {
+      _suggestions = suggestions;
+      _isLoading = false;
+    });
   }
 
   /// The entered value converted to kilometres.
@@ -53,16 +59,47 @@ class _DistanceInputScreenState extends State<DistanceInputScreen> {
     return value / 0.621371; // miles to km
   }
 
-  void _onDigit(String digit) => setState(() => _value += digit);
-
-  void _onDecimal() {
-    if (_value.contains('.')) return;
-    setState(() => _value = _value.isEmpty ? '0.' : '$_value.');
+  Future<void> _editValue() async {
+    final result = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (_) =>
+            DistanceKeypadScreen(initialValue: _value, unit: _unit),
+      ),
+    );
+    if (result != null) setState(() => _value = result);
   }
 
-  void _onBackspace() {
-    if (_value.isEmpty) return;
-    setState(() => _value = _value.substring(0, _value.length - 1));
+  Future<void> _pickUnit() async {
+    final result = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (_) => OptionPickerScreen<String>(
+          title: 'Unit',
+          options: [
+            for (final unit in const ['m', 'km', 'mi'])
+              PickerOption(label: unit, value: unit),
+          ],
+        ),
+      ),
+    );
+    if (result != null) _selectUnit(result);
+  }
+
+  Future<void> _pickPreviousDistance() async {
+    final result = await Navigator.of(context).push<double>(
+      MaterialPageRoute(
+        builder: (_) => OptionPickerScreen<double>(
+          title: 'Previous Distances',
+          options: [
+            for (final distance in _suggestions)
+              PickerOption(
+                label: '${formatDistance(distance)} km',
+                value: distance,
+              ),
+          ],
+        ),
+      ),
+    );
+    if (result != null) _selectSuggestion(result);
   }
 
   void _selectSuggestion(double distance) {
@@ -74,16 +111,18 @@ class _DistanceInputScreenState extends State<DistanceInputScreen> {
 
   /// Switches the active unit, converting the current value to match.
   void _selectUnit(String unit) {
+    final currentKm = _enteredValue;
+    final String converted;
+    if (unit == 'km') {
+      converted = formatDistance(currentKm);
+    } else if (unit == 'm') {
+      converted = (currentKm * 1000).toStringAsFixed(0);
+    } else {
+      converted = (currentKm * 0.621371).toStringAsFixed(2);
+    }
     setState(() {
-      final currentKm = _enteredValue;
       _unit = unit;
-      if (unit == 'km') {
-        _value = formatDistance(currentKm);
-      } else if (unit == 'm') {
-        _value = (currentKm * 1000).toStringAsFixed(0);
-      } else {
-        _value = (currentKm * 0.621371).toStringAsFixed(2);
-      }
+      _value = converted;
     });
   }
 
@@ -107,37 +146,21 @@ class _DistanceInputScreenState extends State<DistanceInputScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              _ValueDisplay(text: '${_value.isEmpty ? '0' : _value} $_unit'),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  for (final unit in const ['m', 'km', 'mi'])
-                    _UnitButton(
-                      unit: unit,
-                      isSelected: _unit == unit,
-                      onTap: () => _selectUnit(unit),
-                    ),
-                ],
+              ValueDisplay(
+                text: '${_value.isEmpty ? '0' : _value} $_unit',
+                onTap: _editValue,
               ),
+              const SizedBox(height: 12),
+              MenuButton(label: 'Unit: $_unit', onTap: _pickUnit),
               if (!_isLoading && _suggestions.isNotEmpty) ...[
                 const SizedBox(height: 12),
-                _SuggestionChips(
-                  suggestions: _suggestions,
-                  onSelect: _selectSuggestion,
+                MenuButton(
+                  label: 'Previous Distances',
+                  onTap: _pickPreviousDistance,
                 ),
               ],
-              const SizedBox(height: 12),
-              Expanded(
-                child: DigitKeypad(
-                  allowDecimal: true,
-                  onDigit: _onDigit,
-                  onDecimal: _onDecimal,
-                  onBackspace: _onBackspace,
-                ),
-              ),
-              const SizedBox(height: 8),
-              _InputActions(
+              const Spacer(),
+              InputActions(
                 onCancel: () => Navigator.of(context).pop(),
                 onOk: () => Navigator.of(context).pop(_enteredValue),
               ),
@@ -145,148 +168,6 @@ class _DistanceInputScreenState extends State<DistanceInputScreen> {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// The large centred read-out of the value currently being entered.
-class _ValueDisplay extends StatelessWidget {
-  final String text;
-
-  const _ValueDisplay({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.white10,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.green),
-      ),
-      child: Text(
-        text,
-        textAlign: TextAlign.center,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 24,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
-}
-
-/// A single unit toggle (m/km/mi), highlighted when [isSelected].
-class _UnitButton extends StatelessWidget {
-  final String unit;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _UnitButton({
-    required this.unit,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.green : Colors.white10,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: isSelected ? Colors.green : Colors.white24),
-        ),
-        child: Text(
-          unit,
-          style: TextStyle(
-            color: isSelected ? Colors.black : Colors.white,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Wrap of tappable "frequently used" distance chips (values in km).
-class _SuggestionChips extends StatelessWidget {
-  final List<double> suggestions;
-  final ValueChanged<double> onSelect;
-
-  const _SuggestionChips({required this.suggestions, required this.onSelect});
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      alignment: WrapAlignment.center,
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        for (final distance in suggestions)
-          GestureDetector(
-            onTap: () => onSelect(distance),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white10,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white24),
-              ),
-              child: Text(
-                '${formatDistance(distance)} km',
-                style: const TextStyle(color: Colors.white, fontSize: 12),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-/// Cancel / OK action row for the input screen.
-class _InputActions extends StatelessWidget {
-  final VoidCallback onCancel;
-  final VoidCallback onOk;
-
-  const _InputActions({required this.onCancel, required this.onOk});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: TextButton(
-            onPressed: onCancel,
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: Colors.white70, fontSize: 18),
-            ),
-          ),
-        ),
-        Expanded(
-          child: TextButton(
-            style: TextButton.styleFrom(
-              backgroundColor: Colors.green,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(6),
-              ),
-            ),
-            onPressed: onOk,
-            child: const Text(
-              'OK',
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
