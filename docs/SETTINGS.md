@@ -9,8 +9,8 @@ a tab:
 
 | Tab | Contents |
 |-----|----------|
-| **TTS** | TTS Enabled, Speed, Volume, Delay after audio, Pause other apps audio, Resume AIMP after playback, **Test Voice** |
-| **Gestures** | Single tap / Double tap / Long press → action dropdowns, Delay button navigation |
+| **TTS** | TTS Enabled, Speed, Volume, Delay after audio, Pause other apps audio, Resume AIMP after playback, **Test Voice** — see [screens/TTS_SETTINGS_TAB.md](screens/TTS_SETTINGS_TAB.md) |
+| **Gestures** | Single tap / Double tap / Long press → action dropdowns, Delay button navigation — see [screens/GESTURE_SETTINGS_TAB.md](screens/GESTURE_SETTINGS_TAB.md) |
 | **MP3** | The MP3 file list (with per-file preview playback) + Add Files / Add Folder / **Refresh Folder** — see [screens/MP3_SETTINGS_TAB.md](screens/MP3_SETTINGS_TAB.md) |
 
 The single **Save** action lives in the AppBar and applies across all tabs.
